@@ -33,6 +33,7 @@ if __name__ != "__main__":
     def get_wall():
         """ 가로로 긴 벽돌담 모양 """
         wall = [
-            "|===|"
+            "|==|"
         ]
         return '\n'.join(wall)
+
