@@ -1,0 +1,156 @@
+import os
+import time
+import shutil
+import sys
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def get_big_start_text():
+    return r"""
+███████╗████████╗ █████╗ ██████╗ ████████╗
+██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝
+███████╗   ██║   ███████║██████╔╝   ██║   
+╚════██║   ██║   ██╔══██║██╔══██╗   ██║   
+███████║   ██║   ██║  ██║██║  ██║   ██║   
+╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+    """
+
+def get_big_end_text():
+    return r"""
+ ██████╗  █████╗ ███╗   ███╗███████╗    ██████╗ ██╗   ██╗███████╗██████╗ 
+██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ██╔═══██╗██║   ██║██╔════╝██╔══██╗
+██║  ███╗███████║██╔████╔██║█████╗      ██║   ██║██║   ██║█████╗  ██████╔╝
+██║   ██║██╔══██║██║╚██╔╝██║██╔══╝      ██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
+╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║
+ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝
+    """
+
+def print_centered(text):
+    try:
+        columns, lines = shutil.get_terminal_size()
+    except OSError:
+        columns, lines = 80, 25
+    text_lines = text.strip().split('\n')
+    vertical_padding = (lines - len(text_lines)) // 2
+    print('\n' * vertical_padding)
+    for line in text_lines:
+        print(line.center(columns))
+
+def screen_one():
+    clear_screen()
+    print_centered(get_big_start_text())
+    columns, _ = shutil.get_terminal_size()
+    print("\n" + "잠시 후 게임이 시작됩니다...".center(columns))
+    time.sleep(2)
+    screen_two()
+
+def screen_two():
+    clear_screen()
+
+    filename = "track.txt"
+    if not os.path.exists(filename):
+        print(f"오류: {filename} 파일이 없습니다.")
+        return
+
+    with open(filename, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    total_lines = len(lines)
+    view_height = 20
+    start_time = time.time()
+    score = 0
+
+    # 아이템 목록
+    items = [
+        {"line": 5, "name": "무적", "effect": "invincible", "active": False},
+        {"line": 12, "name": "2배 점수", "effect": "double_score", "active": False}
+    ]
+
+    print("3초 후 레이싱을 시작합니다!")
+    time.sleep(3)
+
+    try:
+        for i in range(total_lines - view_height):
+            clear_screen()
+
+            elapsed_time = time.time() - start_time
+            if elapsed_time < 15:
+                delay = 1.0
+                status = "속도: 보통 (1.0s)"
+            elif elapsed_time < 30:
+                delay = 0.5
+                status = "속도: 빠름 (0.5s)"
+            elif elapsed_time < 60:
+                delay = 0.2
+                status = "속도: 매우 빠름!! (0.2s)"
+            else:
+                delay = 0.05
+                status = "속도: 엄청나게 빠름!!!!!! (0.05s)"
+
+            current_view = lines[i: i + view_height]
+
+            # 아이템 표시 + 효과 적용 (트랙에서 '/' 있는 위치만)
+            for item in items:
+                if i <= item["line"] < i + view_height:
+                    line_index = item["line"] - i
+                    line_text = current_view[line_index].rstrip()
+
+                    # '/'가 있는 줄에서만 아이템 표시
+                    if '/' in line_text:
+                        current_view[line_index] = line_text + f"  <-- [아이템: {item['name']}]"
+
+                        # 해당 줄에 도달하면 아이템 효과 적용
+                        if not item["active"]:
+                            item["active"] = True
+                            if item["effect"] == "double_score":
+                                score *= 2
+                            elif item["effect"] == "invincible":
+                                status += " | 무적 상태!"
+
+            # 트랙 출력
+            for line in current_view:
+                print(line, end='')
+
+            # 점수 증가
+            score += 10
+            if any(item["active"] and item["effect"] == "double_score" for item in items):
+                score += 10
+
+            # 하단 상태 표시
+            print(f"\n[경과 시간: {elapsed_time:.1f}초] | {status} | 점수: {score}")
+
+            time.sleep(delay)
+
+        print("\n\n=== GOAL 지점에 도착했습니다! ===")
+
+    except KeyboardInterrupt:
+        print("\n게임을 종료합니다.")
+
+    screen_three()
+
+def screen_three():
+    clear_screen()
+    print_centered(get_big_end_text())
+
+    columns, _ = shutil.get_terminal_size()
+    question = "게임을 계속하시겠습니까? (Y/N)"
+    print("\n" + question.center(columns))
+    print()
+    while True:
+        choice = input("선택 > ".center(columns // 2)).strip().upper()
+        if choice == 'Y':
+            print()
+            print("게임을 다시 시작합니다!".center(columns))
+            time.sleep(1)
+            screen_two()
+            return
+        elif choice == 'N':
+            print()
+            print("게임을 종료합니다. 이용해 주셔서 감사합니다.".center(columns))
+            sys.exit()
+        else:
+            print("잘못된 입력입니다. Y 또는 N을 입력해주세요.".center(columns))
+
+if __name__ == "__main__":
+    screen_one()
