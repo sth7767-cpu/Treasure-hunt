@@ -1,0 +1,298 @@
+import os
+import time
+import shutil
+import sys
+import random
+
+# Windows CMD에서 키입력 받기
+import msvcrt
+
+# CMD 환경 강제 실행 로직 (기존과 동일)
+if os.environ.get("RUN_IN_CMD") != "1":
+    os.environ["RUN_IN_CMD"] = "1"
+    os.system(f'start cmd /k "{sys.executable} {__file__}"')
+    sys.exit()
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def get_big_start_text():
+    return r"""
+███████╗████████╗ █████╗ ██████╗ ████████╗
+██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝
+███████╗   ██║   ███████║██████╔╝   ██║   
+╚════██║   ██║   ██╔══██║██╔══██╗   ██║   
+███████║   ██║   ██║  ██║██║  ██║   ██║   
+╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+    """
+
+def get_big_end_text():
+    return r"""
+ ██████╗  █████╗ ███╗   ███╗███████╗    ██████╗ ██╗   ██╗███████╗██████╗ 
+██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ██╔═══██╗██║   ██║██╔════╝██╔══██╗
+██║  ███╗███████║██╔████╔██║█████╗      ██║   ██║██║   ██║█████╗  ██████╔╝
+██║   ██║██╔══██║██║╚██╔╝██║██╔══╝      ██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
+╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║
+ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝
+    """
+
+def print_centered(text):
+    columns, lines = shutil.get_terminal_size()
+    text_lines = text.strip().split('\n')
+    vertical_padding = (lines - len(text_lines)) // 2
+    print('\n' * max(0, vertical_padding))
+    for line in text_lines:
+        print(line.center(columns))
+
+def get_score(start_time):
+    return int(time.time() - start_time)
+
+def screen_one():
+    clear_screen()
+    print_centered(get_big_start_text())
+    columns, _ = shutil.get_terminal_size()
+    print("\n" + "잠시 후 게임이 시작됩니다...".center(columns))
+    time.sleep(2)
+    screen_two()
+
+def read_key_nonblocking():
+    """방향키/AD 입력을 논블로킹으로 읽음"""
+    if not msvcrt.kbhit():
+        return None
+    ch = msvcrt.getwch()
+    if ch in ('a', 'A'):
+        return 'LEFT'
+    if ch in ('d', 'D'):
+        return 'RIGHT'
+    if ch == '\x1b':  # ESC
+        return 'ESC'
+    if ch == '\x00' or ch == '\xe0':  # 방향키 prefix
+        ch2 = msvcrt.getwch()
+        if ch2 == 'K':
+            return 'LEFT'
+        if ch2 == 'M':
+            return 'RIGHT'
+    return None
+
+def find_track_bounds(line, walls_set):
+    """한 줄에서 트랙의 왼/오른쪽 벽 위치를 찾음(없으면 None)"""
+    left = None
+    right = None
+    for i, c in enumerate(line):
+        if c in walls_set:
+            left = i
+            break
+    for i in range(len(line) - 1, -1, -1):
+        if line[i] in walls_set:
+            right = i
+            break
+    if left is None or right is None or right <= left:
+        return None
+    return left, right
+
+def screen_two():
+    clear_screen()
+    filename = "../track.txt"  # 필요하면 경로 수정
+    if not os.path.exists(filename):
+        print(f"오류: {filename} 파일이 없습니다.")
+        return
+
+    with open(filename, 'r', encoding='utf-8') as f:
+        raw_lines = [ln.rstrip('\n') for ln in f.readlines()]
+
+    total_lines = len(raw_lines)
+    view_height = 20
+
+    # 차가 "계속 위에" 있게
+    PLAYER_ROW = 2  # 0이 맨 위
+
+    # 트랙 벽 문자들
+    walls = ["│", "┃", "|", "╲", "╱", "\\", "/"]
+    walls_set = set(walls)
+
+    # 아이템 풀
+    ITEM_POOL = [
+        {"name": "무적", "effect": "invincible", "symbol": "★"},
+        {"name": "2배 점수", "effect": "double_score", "symbol": "◆"},
+        {"name": "보너스", "effect": "bonus", "symbol": "♥"},
+    ]
+
+    # 아이템 좌표 저장: abs_line -> {"x": int, "item": {...}}
+    item_spots = {}
+
+    # =========================
+    # ✅ 아이템 생성: "8행마다 중앙" (기존 + 생성 로직을 아이템으로)
+    # - 라인에 직접 박지 않음! (오버레이로 그릴 거라서)
+    # =========================
+    for idx, line in enumerate(raw_lines):
+        if idx % 8 == 0 and idx > 0 and "═" not in line:
+            bounds = find_track_bounds(line, walls_set)
+            if bounds:
+                left, right = bounds
+                center = (left + right) // 2
+                if 0 <= center < len(line) and line[center] == ' ':
+                    item = random.choice(ITEM_POOL)
+                    item_spots[idx] = {"x": center, "item": item}
+
+    # =========================
+    # 효과 상태
+    # =========================
+    start_time = time.time()
+    score_bonus = 0
+    double_score_until = 0.0
+    invincible_until = 0.0
+
+    # =========================
+    # 차 초기 위치: 첫 프레임의 PLAYER_ROW에서 트랙 중앙으로
+    # =========================
+    initial_i = 0
+    base_line_for_car = raw_lines[min(initial_i + PLAYER_ROW, total_lines - 1)]
+    bounds = find_track_bounds(base_line_for_car, walls_set)
+    if bounds:
+        left, right = bounds
+        car_x = (left + right) // 2
+    else:
+        car_x = len(base_line_for_car) // 2
+
+    # 스크롤 속도(너무 빨리 사라지는 느낌이면 여기 올리면 됨)
+    # frame_skip을 2로 하면 "한 줄을 2프레임 동안 보여줘서" 더 천천히 올라옴
+    frame_skip = 2
+
+    print("3초 후 레이싱을 시작합니다! (A/D 또는 ←/→ 이동, ESC 종료)")
+    time.sleep(3)
+
+    try:
+        i = 0
+        while i <= total_lines - view_height:
+            clear_screen()
+            elapsed = time.time() - start_time
+
+            # 기본 딜레이(원래보다 살짝 느리게)
+            delay = 0.08 if elapsed < 15 else 0.05 if elapsed < 30 else 0.03
+
+            # ====== 입력 처리 ======
+            key = read_key_nonblocking()
+            if key == 'ESC':
+                print("ESC로 종료합니다.")
+                time.sleep(0.5)
+                break
+
+            # 현재 플레이어 라인의 트랙 경계로 차 이동 제한
+            player_line_abs = i + PLAYER_ROW
+            if 0 <= player_line_abs < total_lines:
+                bounds = find_track_bounds(raw_lines[player_line_abs], walls_set)
+                if bounds:
+                    left, right = bounds
+                    min_x = left + 1
+                    max_x = right - 1
+                    if key == 'LEFT':
+                        car_x -= 1
+                    elif key == 'RIGHT':
+                        car_x += 1
+                    if car_x < min_x:
+                        car_x = min_x
+                    if car_x > max_x:
+                        car_x = max_x
+                else:
+                    # 경계 못 찾으면 그냥 좌우만
+                    if key == 'LEFT':
+                        car_x -= 1
+                    elif key == 'RIGHT':
+                        car_x += 1
+                    car_x = max(0, min(car_x, len(raw_lines[player_line_abs]) - 1))
+
+            # ====== 렌더 뷰 만들기 (복사해서 오버레이) ======
+            current_view = raw_lines[i: i + view_height]
+            render = [list(line) for line in current_view]
+
+            # ====== 아이템 오버레이: 화면에 들어온 아이템만 그리기 ======
+            for abs_line, obj in list(item_spots.items()):
+                if i <= abs_line < i + view_height:
+                    row = abs_line - i
+                    x = obj["x"]
+                    if 0 <= row < view_height and 0 <= x < len(render[row]):
+                        # 트랙 위에만 찍히게 하고 싶으면 공백일 때만 찍기
+                        if render[row][x] == ' ':
+                            render[row][x] = obj["item"]["symbol"]
+
+                # 화면을 완전히 지나가서(플레이어보다 훨씬 위로) 다시는 못 먹는 아이템은 정리
+                if abs_line < i - 2:
+                    del item_spots[abs_line]
+
+            # ====== 차 오버레이 (항상 고정) ======
+            car_symbol = 'A'  # 원하면 '🚗'로 바꿔도 됨(폭 문제 생길 수 있음)
+            row = PLAYER_ROW
+            if 0 <= row < view_height and 0 <= car_x < len(render[row]):
+                render[row][car_x] = car_symbol
+
+            # ====== 충돌(획득): "차 위치"와 같은 줄/같은 x인 아이템만 먹기 ======
+            now = time.time()
+            if player_line_abs in item_spots:
+                obj = item_spots[player_line_abs]
+                if obj["x"] == car_x:
+                    item = obj["item"]
+                    del item_spots[player_line_abs]
+
+                    if item["effect"] == "bonus":
+                        score_bonus += 10
+                    elif item["effect"] == "double_score":
+                        double_score_until = now + 5.0
+                    elif item["effect"] == "invincible":
+                        invincible_until = now + 5.0
+
+            # ====== 출력 ======
+            for row_chars in render:
+                print(''.join(row_chars))
+
+            base_score = get_score(start_time)
+            shown_score = base_score
+            tags = []
+
+            if now < double_score_until:
+                shown_score = base_score * 2
+                tags.append("SCORE x2")
+
+            if now < invincible_until:
+                tags.append("무적")
+
+            shown_score += score_bonus
+            tag_str = (" | 상태: " + ", ".join(tags)) if tags else ""
+            print("-" * 60)
+            print(f"[현재 점수: {shown_score}]{tag_str}  (A/D 또는 ←/→ 이동, ESC 종료)")
+
+            time.sleep(delay)
+
+            # ====== 스크롤 진행(아이템이 더 오래 보이게) ======
+            # frame_skip=2면 i를 2프레임에 1번만 올려서 "더 천천히 올라오는 느낌"
+            for _ in range(frame_skip - 1):
+                # 같은 i로 한 프레임 더 보여주기
+                key2 = read_key_nonblocking()
+                if key2 == 'ESC':
+                    return screen_three()
+                time.sleep(delay)
+
+            i += 1
+
+        print("\n\n=== GOAL 지점에 도착했습니다! ===")
+        time.sleep(2)
+
+    except KeyboardInterrupt:
+        print("\n게임을 종료합니다.")
+
+    screen_three()
+
+def screen_three():
+    clear_screen()
+    print_centered(get_big_end_text())
+    columns, _ = shutil.get_terminal_size()
+    print("\n" + "게임을 다시 하시겠습니까? (Y/N)".center(columns))
+    while True:
+        choice = input("선택 > ".center(columns // 2)).strip().upper()
+        if choice == 'Y':
+            screen_two()
+            return
+        elif choice == 'N':
+            sys.exit()
+
+if __name__ == "__main__":
+    screen_one()
