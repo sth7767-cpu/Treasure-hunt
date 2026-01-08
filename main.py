@@ -8,6 +8,7 @@ import player
 import game
 import normal
 import hard
+import unicodedata
 
 
 def clear_screen():
@@ -33,6 +34,43 @@ def get_big_end_text():
 ╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║
  ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝
     """
+
+
+# =================================================
+# 터미널 표시 폭(한글=2칸) 유틸
+# =================================================
+def disp_width(s: str) -> int:
+    """터미널 표시 폭 기준 길이(동아시아 Wide/Fullwidth=2칸)"""
+    w = 0
+    for ch in s:
+        if unicodedata.east_asian_width(ch) in ("W", "F"):
+            w += 2
+        else:
+            w += 1
+    return w
+
+
+def truncate_to_width(s: str, max_w: int) -> str:
+    """표시 폭 max_w를 넘지 않게 자르기"""
+    out = []
+    w = 0
+    for ch in s:
+        ch_w = 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+        if w + ch_w > max_w:
+            break
+        out.append(ch)
+        w += ch_w
+    return "".join(out)
+
+
+def pad_right_to_width(s: str, target_w: int) -> str:
+    """표시 폭 target_w가 되도록 오른쪽 공백 채우기"""
+    cur = disp_width(s)
+    if cur >= target_w:
+        return s
+    return s + (" " * (target_w - cur))
+
+
 
 
 
@@ -65,6 +103,47 @@ def print_centered_end(text):
         print(" " * padding + ln)
 
 
+# =================================================
+# ✅ 박스 렌더링: 박스는 중앙 고정, 내용은 왼쪽 정렬(한글폭 대응)
+# =================================================
+def build_info_box_left(box_w: int, content_lines: list[str], left_pad: int = 2) -> str:
+    inner_w = box_w - 2
+
+    top = "+" + ("-" * inner_w) + "+"
+    bottom = "+" + ("-" * inner_w) + "+"
+
+    def make_line(text: str) -> str:
+        if text == "":
+            return "|" + (" " * inner_w) + "|"
+
+        usable = max(0, inner_w - left_pad)
+        trimmed = truncate_to_width(text, usable)  # ✅ 표시폭 기준 자르기
+
+        left = (" " * left_pad) + trimmed
+        left = pad_right_to_width(left, inner_w)   # ✅ 표시폭 기준 패딩
+        return "|" + left + "|"
+
+    block_lines = [top]
+    for t in content_lines:
+        block_lines.append(make_line(t))
+    block_lines.append(bottom)
+    return "\n".join(block_lines)
+
+
+def print_block_centered(block: str, columns: int):
+    """
+    블록을 표시폭 기준으로 중앙 정렬 출력 (세로선 안 흔들림)
+    """
+    lines = block.split("\n")
+    max_w = max(disp_width(ln) for ln in lines) if lines else 0
+    left_pad = max(0, (columns - max_w) // 2)
+    pad = " " * left_pad
+    print("\n".join(pad + ln for ln in lines), end="")
+
+
+
+
+
 # ==========================================
 # 2. 메인 로비 (screen_one)
 # ==========================================
@@ -87,40 +166,80 @@ def screen_one():
 
         # 난이도 선택 메뉴
         selected_index = 0
-        while True:
+
+        def draw_menu():
             clear_screen()
-            print("\n" * 5)
-            print("====== RACING GAME MODE SELECT ======".center(columns))
-            print("\n" * 3)
+            columns, rows = shutil.get_terminal_size()
+
+            title = "================== RACING GAME MODE SELECT =================="
+
+            # ✅ 박스 폭: (1) 터미널 폭 제한 + (2) 타이틀 표시폭 기반 최소 폭
+            min_box_w = disp_width(title) + 2  # | | 포함 (표시폭 기준)
+            box_w = min(72, columns - 4)       # 너무 커지지 않게
+            box_w = max(box_w, 46)             # 너무 작아지지 않게
+            box_w = max(box_w, min_box_w)      # 타이틀이 절대 줄바꿈 안 나게
+
+            inner_w = box_w - 2
+
+            lines = []
+            # ✅ title도 혹시 모를 환경 대비: 표시폭 기준으로 안전하게 잘라 넣기
+            lines.append(truncate_to_width(title, inner_w))
+            lines.append("")
 
             if selected_index == 0:
-                print(" >>  NORMAL MODE  << ".center(columns))
-                print()
-                print("     HARD MODE       ".center(columns))
+                lines.append(">>  NORMAL MODE  <<")
+                lines.append("    HARD MODE")
             else:
-                print("     NORMAL MODE     ".center(columns))
-                print()
-                print(" >>  HARD MODE    << ".center(columns))
+                lines.append("    NORMAL MODE")
+                lines.append(">>  HARD MODE  <<")
 
-            print("\n" * 5)
+            lines.append("")
+            lines.append("-" * inner_w)  # ✅ 내부폭과 정확히 일치 (대충 금지)
 
-            # 조작 가이드 변경: 방향키
-            print("[ ↑: 위 / ↓: 아래 / SPACE: 선택 ]".center(columns))
-            time.sleep(0.15)
+            lines.append("난이도 선택")
+            lines.append("↑ : 위 , ↓ : 아래")
+            lines.append("선택 후 Space")
+            lines.append("")
+            lines.append("게임 내 조작키")
+            lines.append("← / → 도 가능")
 
-            if keyboard.is_pressed('up'):
+            block = build_info_box_left(box_w=box_w, content_lines=lines, left_pad=3)
+
+            # ✅ 세로 중앙 배치
+            block_lines = block.split("\n")
+            pad_y = max(0, (rows - len(block_lines)) // 2)
+
+            print("\n" * pad_y, end="")
+            print_block_centered(block, columns)
+
+        draw_menu()
+
+        # ✅ 키 입력 있을 때만 갱신(깜빡임 최소)
+        while True:
+            if keyboard.is_pressed('up') and selected_index != 0:
                 selected_index = 0
-            elif keyboard.is_pressed('down'):
-                selected_index = 1
-            if keyboard.is_pressed('space'): break
+                draw_menu()
+                time.sleep(0.15)
 
+            elif keyboard.is_pressed('down') and selected_index != 1:
+                selected_index = 1
+                draw_menu()
+                time.sleep(0.15)
+
+            elif keyboard.is_pressed('space'):
+                break
+
+            time.sleep(0.01)
+
+        clear_screen()
+        columns, _ = shutil.get_terminal_size()
         print("\n" + "잠시 후 게임이 시작됩니다...".center(columns))
         time.sleep(1)
 
         # 게임 실행
         final_score = 0
         if selected_index == 0:
-            final_score = normal.screen_two()  # normal.py 실행
+            final_score = normal.screen_two_normal()  # normal.py 실행
         else:
             final_score = hard.screen_two_hard()  # hard.py 실행
 
