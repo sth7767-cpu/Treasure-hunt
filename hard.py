@@ -369,7 +369,7 @@ def screen_two_hard():
         msg += "=> START로 즉시 초기화합니다!!!\n"
         sys.stdout.write(msg)
         sys.stdout.flush()
-        time.sleep(0.9)
+        time.sleep(20)
 
         # 초기화
         missiles.clear()

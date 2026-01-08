@@ -49,6 +49,21 @@ def print_centered(text):
     for ln in t_lines:
         print(ln.center(columns))
 
+def print_centered_end(text):
+    """ 여러 줄의 텍스트를 한글 너비 보정하여 화면 정중앙에 출력 """
+    columns, lines = shutil.get_terminal_size()
+    # 터미널 창이 제대로 안잡힐 때를 대비
+    if columns < 20: columns = 140
+
+    t_lines = text.strip("\n").split("\n")
+
+    for ln in t_lines:
+        # 한글(가~힣) 개수를 세서 그만큼 너비를 더해줌
+        k_count = sum(1 for c in ln if ord('가') <= ord(c) <= ord('힣'))
+        visual_width = len(ln) + k_count
+        padding = max(0, (columns - visual_width) // 2)
+        print(" " * padding + ln)
+
 
 # ==========================================
 # 2. 메인 로비 (screen_one)
@@ -56,10 +71,18 @@ def print_centered(text):
 def screen_one():
     while True:
         clear_screen()
-        # 인트로
+
+        # 1. 로고 출력
         print_centered(get_big_start_text())
+
         columns, _ = shutil.get_terminal_size()
-        print("\n" + "잠시 후 모드 선택 화면으로 이동합니다...".center(columns))
+
+        # 2. 안내 문구 출력 (오른쪽에 공백 추가해서 위치 조절)
+        # "    " 공백을 추가하면 그만큼 전체 길이가 길어져서, 글자는 왼쪽으로 이동합니다.
+        message = "잠시 후 모드 선택 화면으로 이동합니다..." + "                "
+
+        print("\n" + message.center(columns))
+
         time.sleep(2)
 
         # 난이도 선택 메뉴
@@ -72,18 +95,22 @@ def screen_one():
 
             if selected_index == 0:
                 print(" >>  NORMAL MODE  << ".center(columns))
+                print()
                 print("     HARD MODE       ".center(columns))
             else:
                 print("     NORMAL MODE     ".center(columns))
+                print()
                 print(" >>  HARD MODE    << ".center(columns))
 
             print("\n" * 5)
-            print("[ W: 위 / S: 아래 / SPACE: 선택 ]".center(columns))
+
+            # 조작 가이드 변경: 방향키
+            print("[ ↑: 위 / ↓: 아래 / SPACE: 선택 ]".center(columns))
             time.sleep(0.15)
 
-            if keyboard.is_pressed('w'):
+            if keyboard.is_pressed('up'):
                 selected_index = 0
-            elif keyboard.is_pressed('s'):
+            elif keyboard.is_pressed('down'):
                 selected_index = 1
             if keyboard.is_pressed('space'): break
 
@@ -108,28 +135,61 @@ def screen_one():
 # ==========================================
 def screen_three(score):
     clear_screen()
-    print_centered(get_big_end_text())
+    # 로고 출력
+    print_centered_end(get_big_end_text())
+
 
     columns, _ = shutil.get_terminal_size()
 
+    if columns < 20: columns = 140
     # 점수가 None이면(강제종료 등) 0점으로 처리
     if score is None: score = 0
 
-    print(f"\n[ 최종 점수: {score} ]".center(columns))
-    print("\n" + "게임을 계속하시겠습니까? (Y/N)".center(columns))
+    # print("\n" + "게임을 계속하시겠습니까? (Y/N)".center(columns))
+    print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+    print_centered_end("게임을 계속하시겠습니까? (Y/N)")
 
     while True:
-        choice = input("선택 > ".center(columns // 2)).strip().upper()
+        print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+
+        # 입력창(선택 >)도 중앙 정렬을 위해 padding 계산
+        prompt = "선택 >" + "             "
+
+        # (화면 중앙) - (글자 길이 정도) 위치 계산
+        # 여기서 숫자 4를 10, 20 등으로 키우면 더 왼쪽으로 이동합니다.
+        padding_len = max(0, (columns // 2) - 20)
+
+        # 공백 + "선택 > " 형태의 문자열 생성
+        final_prompt = " " * padding_len + prompt
+
+        choice = input(final_prompt).strip().upper()
+
         if choice == 'Y':
-            print("게임을 다시 시작합니다!".center(columns))
+            print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+            print_centered_end("게임을 다시 시작합니다!")
             time.sleep(1)
-            return True  # 다시 screen_one 루프로 돌아감
+            return True
+
         elif choice == 'N':
-            print("게임을 종료합니다. 이용해 주셔서 감사합니다.".center(columns))
-            return False  # 루프 탈출 -> 종료
+            print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+            print_centered_end("게임을 종료합니다. 이용해 주셔서 감사합니다.")
+            time.sleep(2)
+            return False
+
         else:
-            print("잘못된 입력입니다. Y 또는 N을 입력해주세요.".center(columns))
+            print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+            print_centered_end("잘못된 입력입니다. Y 또는 N을 입력해주세요.")
+            print("\n")
+
 
 
 if __name__ == "__main__":
-    screen_one()
+    try:
+        screen_one()
+    except KeyboardInterrupt:
+        # 사용자가 Ctrl+C로 강제 종료했을 때
+        pass
+    finally:
+        # [핵심] 프로그램이 어떤 이유로든 종료되면
+        # keyboard 라이브러리가 잡고 있는 키보드 후킹을 모두 해제합니다.
+        keyboard.unhook_all()
