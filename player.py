@@ -6,7 +6,7 @@ import random
 # CAR
 # =========================
 def car_frame():
-    exhaust = "v"
+    exhaust = "^"
     car = [
         ".-.",                 # Y=0
         "|_|",                 # Y=1
