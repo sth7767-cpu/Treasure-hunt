@@ -103,47 +103,6 @@ def screen_one():
 
 
 
-
-
-# def screen_three():
-#     clear_screen()
-#
-#     # 1. 큰 글씨(GAME OVER) 출력
-#     big_text = get_big_end_text()
-#     print_centered(big_text)
-#
-#     # 2. 계속하기 질문 가운데 정렬 출력
-#     columns, _ = shutil.get_terminal_size()
-#     question = "게임을 계속하시겠습니까? (Y/N)"
-#     print("\n" + question.center(columns))
-#     print()  # 줄바꿈
-#
-#     # 3. Y/N 입력 받기 (반복문으로 올바른 키 입력 유도)
-#     while True:
-#         # 입력 프롬프트도 약간 들여쓰기 하거나 그냥 두어도 됩니다.
-#         choice = input("선택 > ".center(columns // 2)).strip().upper()
-#
-#         if choice == 'Y':
-#             print()
-#             print("게임을 다시 시작합니다!".center(columns))
-#             time.sleep(1)  # 잠시 대기 후 전환
-#             screen_two()  # 화면 2로 이동 (재시작)
-#             return  # 현재 함수 종료
-#
-#         elif choice == 'N':
-#             print()
-#             print("게임을 종료합니다. 이용해 주셔서 감사합니다.".center(columns))
-#             sys.exit()  # 프로그램 완전 종료
-#
-#         else:
-#             print("잘못된 입력입니다. Y 또는 N을 입력해주세요.".center(columns))
-#
-#
-#
-# if __name__ == "__main__":
-#     screen_one()
-
-
 # ==========================================
 # 3. 엔딩 화면 (screen_three)
 # ==========================================
