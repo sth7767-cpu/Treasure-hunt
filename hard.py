@@ -1,3 +1,9 @@
+# hard.py (복붙용 완성본)
+# - 사이드바/화면 깜빡임 제거: 매 프레임 화면 전체 삭제(X) -> 커서만 HOME으로 이동해서 덮어쓰기
+# - 커서 숨김/복구
+# - 네모 SCORE 박스/결과 박스: 한글/전각 폭 고려(display_width/pad_to_width)
+# - 기존 하드 로직(미사일/아이템/벽즉사/GOAL) 유지
+
 import os
 import sys
 import time
@@ -45,10 +51,22 @@ def enable_ansi_on_windows():
 ANSI_OK = enable_ansi_on_windows()
 
 
-def move_cursor_home():
-    # 잔상 제거
+def hide_cursor():
     if ANSI_OK:
-        sys.stdout.write("\x1b[H\x1b[J")  # home + clear to end
+        sys.stdout.write("\x1b[?25l")
+        sys.stdout.flush()
+
+
+def show_cursor():
+    if ANSI_OK:
+        sys.stdout.write("\x1b[?25h")
+        sys.stdout.flush()
+
+
+def move_cursor_home():
+    # ✅ 깜빡임 제거 핵심: 전체 화면 지우지 말고 HOME으로만 이동해서 덮어쓰기
+    if ANSI_OK:
+        sys.stdout.write("\x1b[H")
         sys.stdout.flush()
     else:
         clear_screen()
@@ -64,10 +82,8 @@ def print_centered_block(text: str):
     for ln in lines:
         w = display_width(ln)
         if w >= cols:
-            # 터미널보다 길면 그대로 출력(줄바꿈 방지용으로 불필요한 패딩 안 함)
             sys.stdout.write(ln + "\n")
             continue
-
         left_pad = (cols - w) // 2
         sys.stdout.write((" " * left_pad) + ln + "\n")
 
@@ -147,14 +163,14 @@ def wait_result_choice():
 # 그리드/렌더 (트랙 폭 고정 + 사이드바 폭 고정)
 # -------------------------------
 TRACK_WIDTH = None
-SIDEBAR_WIDTH = 36  # 오른쪽 안내 텍스트 영역 폭 (박스 자체는 SCORE_BOX_INNER로 고정)
+SIDEBAR_WIDTH = 36
 
 def to_grid(view_lines):
     global TRACK_WIDTH
     stripped = [ln.rstrip("\n") for ln in view_lines]
     w = max((len(s) for s in stripped), default=0)
 
-    # 첫 프레임 폭 기준으로 고정(줄 길이 변동으로 sidebar 흔들림 방지)
+    # 첫 프레임 폭 기준 고정(흔들림 방지)
     if TRACK_WIDTH is None:
         TRACK_WIDTH = w
     else:
@@ -181,7 +197,6 @@ def render_with_sidebar(grid, sidebar_lines):
     for i in range(H):
         row = "".join(grid[i])
         side = sidebar_lines[i] if i < len(sidebar_lines) else ""
-        # sidebar 라인도 표시폭 기준으로 패딩(한글 포함 가능)
         out.append(row + "  " + pad_to_width(side, SIDEBAR_WIDTH))
     return "\n".join(out) + "\n"
 
@@ -330,9 +345,25 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
                     if 0 <= gx < W and ch != " ":
                         grid[gy][gx] = ch
 
+        sidebar = []
+        sidebar += build_score_box(0, 0, 0, "READY")
+        sidebar += [
+            "",
+            "Items:",
+            "  ★ = +5",
+            "  ● = +3",
+            "  ▲ = -2",
+            "",
+            "Hard Mode:",
+            "  벽/미사일=즉시 종료",
+            "",
+            "Controls:",
+            "  A/D 또는 ←/→",
+            "  ESC 종료",
+        ]
+
         move_cursor_home()
-        sys.stdout.write("".join("".join(row) + "\n" for row in grid))
-        sys.stdout.write("\nA/D 또는 ←/→ 이동 준비… (카운트다운 끝나면 출발)\n")
+        sys.stdout.write(render_with_sidebar(grid, sidebar))
         sys.stdout.flush()
         time.sleep(sec)
 
@@ -400,6 +431,7 @@ def choose_item_spawn(current_view, view_height):
             return y, x
     return None
 
+
 def make_car_cells(car_sprite_lines, car_x, car_y):
     cells = set()
     for dy, line in enumerate(car_sprite_lines):
@@ -409,27 +441,23 @@ def make_car_cells(car_sprite_lines, car_x, car_y):
     return cells
 
 
-SCORE_BOX_INNER = 24  # 안쪽 폭(고정)
+# -------------------------------
+# SCORE 박스(완전 네모)
+# -------------------------------
+SCORE_BOX_INNER = 24
+
 def build_score_box(points, best, sec, speed_status):
     top = "┌" + ("─" * SCORE_BOX_INNER) + "┐"
-
-    c1 = f" Points : {points}"
-    c2 = f" Best   : {best}"
-    c3 = f" Time   : {sec}"
-    c4 = f" Speed  : {speed_status}"
-
-    l1 = "│" + pad_to_width(c1, SCORE_BOX_INNER) + "│"
-    l2 = "│" + pad_to_width(c2, SCORE_BOX_INNER) + "│"
-    l3 = "│" + pad_to_width(c3, SCORE_BOX_INNER) + "│"
-    l4 = "│" + pad_to_width(c4, SCORE_BOX_INNER) + "│"
-
+    l1 = "│" + pad_to_width(f" Points : {points}", SCORE_BOX_INNER) + "│"
+    l2 = "│" + pad_to_width(f" Best   : {best}", SCORE_BOX_INNER) + "│"
+    l3 = "│" + pad_to_width(f" Time   : {sec}", SCORE_BOX_INNER) + "│"
+    l4 = "│" + pad_to_width(f" Speed  : {speed_status}", SCORE_BOX_INNER) + "│"
     bot = "└" + ("─" * SCORE_BOX_INNER) + "┘"
     return [top, l1, l2, l3, l4, bot]
 
 
 # -------------------------------
-# 결과 화면(가운데) - 완전한 네모
-#   핵심: 라인 조립 + pad_to_width() 사용
+# 결과 화면(가운데) - 완전 네모
 # -------------------------------
 def show_hard_result(kind, points, highscore, sec, speed_status, reason=""):
     if points > highscore:
@@ -456,7 +484,7 @@ def show_hard_result(kind, points, highscore, sec, speed_status, reason=""):
     }
     title = arts.get(kind, kind)
 
-    inner = 34  # 박스 안쪽 폭(고정)
+    inner = 34
 
     def row(content: str) -> str:
         return "┃" + pad_to_width(content, inner) + "┃"
@@ -466,8 +494,6 @@ def show_hard_result(kind, points, highscore, sec, speed_status, reason=""):
     bot = "┗" + ("━" * inner) + "┛"
 
     reason_line = f"REASON : {reason}" if reason else ""
-
-    # kind 헤더는 중앙정렬(표시폭 기준 정렬은 여기선 단순 center로 충분)
     header = f"{kind:^10}".center(inner)
 
     box_lines = [
@@ -488,14 +514,18 @@ def show_hard_result(kind, points, highscore, sec, speed_status, reason=""):
     clear_screen()
     print_centered_block(title + "\n\n" + box + "\n\n" + hint)
     return highscore
+
+
 # -------------------------------
 # 하드모드 실행
 # -------------------------------
 def screen_two_hard():
     global TRACK_WIDTH
+    hide_cursor()
 
     filename = "track_hard.txt"
     if not os.path.exists(filename):
+        show_cursor()
         clear_screen()
         print("오류: track_hard.txt 파일이 없습니다.")
         time.sleep(1.2)
@@ -538,29 +568,29 @@ def screen_two_hard():
         car_x = (last_bounds[0] + last_bounds[1]) // 2
         return scroll_i, car_x, car_y, last_bounds
 
-    while True:  # R 다시하기 루프
-        TRACK_WIDTH = None  # 매 판 트랙 폭 재설정
+    try:
+        while True:  # R 다시하기 루프
+            TRACK_WIDTH = None
 
-        missiles = []
-        items = []
-        last_missile_spawn = time.time() - 999
-        last_item_spawn = time.time() - 999
-        last_move_time = time.time()
+            missiles = []
+            items = []
+            last_missile_spawn = time.time() - 999
+            last_item_spawn = time.time() - 999
+            last_move_time = time.time()
 
-        scroll_i, car_x, car_y, last_bounds = init_start_state()
+            scroll_i, car_x, car_y, last_bounds = init_start_state()
 
-        start_time = time.time()
-        points = 0
-        last_sec = 0
-        speed_status = "보통"
+            start_time = time.time()
+            points = 0
+            last_sec = 0
+            speed_status = "보통"
 
-        countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
-        clear_screen()
+            countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
+            clear_screen()
 
-        ended_kind = None     # "GAME OVER" / "GOAL"
-        ended_reason = ""     # "WALL" / "MISSILE" 등
+            ended_kind = None
+            ended_reason = ""
 
-        try:
             while scroll_i < total_lines:
                 now = time.time()
                 current_view = lines[scroll_i: scroll_i + view_height]
@@ -598,7 +628,8 @@ def screen_two_hard():
                 # 입력
                 left, right, esc = get_key_state()
                 if esc:
-                    return  # 메뉴로
+                    show_cursor()
+                    return
 
                 last_bounds = get_road_bounds_safe(current_view, car_y, car_w, car_h, last_bounds=last_bounds)
                 mn, mx = last_bounds
@@ -718,7 +749,7 @@ def screen_two_hard():
                     ended_kind, ended_reason = "GOAL", ""
                     break
 
-                # 사이드바(네모 SCORE + 안내)
+                # 사이드바
                 sidebar = []
                 sidebar += build_score_box(points, highscore, sec, speed_status)
                 sidebar += [
@@ -743,19 +774,29 @@ def screen_two_hard():
                 time.sleep(delay)
                 scroll_i += 1
 
-        except KeyboardInterrupt:
+            # 결과 처리
+            elapsed = time.time() - start_time
+            sec = int(elapsed)
+            if ended_kind is None:
+                ended_kind, ended_reason = "GAME OVER", "END"
+
+            final_speed = "FINISH" if ended_kind == "GOAL" else speed_status
+
+            show_cursor()
+            highscore = show_hard_result(ended_kind, points, highscore, sec, final_speed, reason=ended_reason)
+            hide_cursor()
+
+            choice = wait_result_choice()
+            if choice == "restart":
+                continue
+            show_cursor()
             return
 
-        # 결과 처리
-        elapsed = time.time() - start_time
-        sec = int(elapsed)
-        if ended_kind is None:
-            ended_kind, ended_reason = "GAME OVER", "END"
+    finally:
+        # 어떤 예외든 커서 복구
+        show_cursor()
 
-        final_speed = "FINISH" if ended_kind == "GOAL" else speed_status
-        highscore = show_hard_result(ended_kind, points, highscore, sec, final_speed, reason=ended_reason)
 
-        choice = wait_result_choice()
-        if choice == "restart":
-            continue
-        return
+# main.py에서 호출용 별칭이 필요하면:
+def screen_two():
+    return screen_two_hard()
