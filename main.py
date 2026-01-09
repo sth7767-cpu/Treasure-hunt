@@ -190,7 +190,7 @@ def screen_one():
             lines.append("선택 후 Space")
             lines.append("")
             lines.append("게임 내 조작키")
-            lines.append("← / → 도 가능")
+            lines.append("A: 오른쪽. D: 왼쪽 ← / → 도 가능")
 
             block = build_info_box_left(box_w=box_w, content_lines=lines, left_pad=3)
 
