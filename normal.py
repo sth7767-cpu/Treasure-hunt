@@ -17,9 +17,9 @@ except ImportError:
     USE_KEYBOARD = False
 
 
-# -------------------------------
-# 화면/ANSI
-# -------------------------------
+# =================================================
+# 1. 화면/ANSI/유틸
+# =================================================
 def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -37,7 +37,7 @@ def enable_ansi_on_windows():
         if kernel32.SetConsoleMode(handle, mode.value | 0x0004) == 0:
             return False
         return True
-    except Exception:
+    except:
         return False
 
 
@@ -64,9 +64,6 @@ def move_cursor_home():
         clear_screen()
 
 
-# -------------------------------
-# 표시 폭(한글/전각=2칸)
-# -------------------------------
 def display_width(s: str) -> int:
     w = 0
     for ch in s:
@@ -98,34 +95,12 @@ def print_centered_block(text: str):
             continue
         left_pad = (cols - w) // 2
         sys.stdout.write((" " * left_pad) + ln + "\n")
-
     sys.stdout.flush()
 
 
-# -------------------------------
-# ✅ 스프라이트 180도 회전
-# -------------------------------
-def rotate_sprite_180(sprite: str) -> str:
-    lines = sprite.split("\n")
-    if lines and lines[-1] == "":
-        lines.pop()
-
-    if not lines:
-        return sprite
-
-    w = max(len(line) for line in lines)
-    padded = [line.ljust(w) for line in lines]
-
-    rotated = []
-    for line in reversed(padded):
-        rotated.append(line[::-1])
-
-    return "\n".join(rotated)
-
-
-# -------------------------------
-# 입력
-# -------------------------------
+# =================================================
+# 2. 입력 및 렌더링
+# =================================================
 def get_key_state():
     if USE_KEYBOARD:
         left = keyboard.is_pressed("a") or keyboard.is_pressed("left")
@@ -156,9 +131,6 @@ def wait_result_choice():
             elif keyboard.is_pressed("esc"):
                 time.sleep(0.2)
                 return "exit"
-            elif keyboard.is_pressed("m"):
-                time.sleep(0.2)
-                return "menu"
             time.sleep(0.03)
         else:
             if msvcrt.kbhit():
@@ -166,15 +138,12 @@ def wait_result_choice():
                 if ch in (b"r", b"R"):
                     return "restart"
                 if ch == b"\x1b":
-                    return "menu"
+                    return "exit"
             time.sleep(0.03)
 
 
-# -------------------------------
-# 그리드/렌더
-# -------------------------------
 TRACK_WIDTH = None
-SIDEBAR_WIDTH = 70
+SIDEBAR_WIDTH = 35
 
 
 def to_grid(view_lines):
@@ -212,14 +181,10 @@ def render_with_sidebar(grid, sidebar_lines):
     return "\n".join(out) + "\n"
 
 
-# -------------------------------
-# 트랙/도로 헬퍼
-# -------------------------------
-def find_start_index(lines):
-    for idx, line in enumerate(lines):
-        if "START" in line:
-            return idx
-    return 0
+def rotate_sprite_180(sprite_str):
+    lines = sprite_str.split("\n")
+    lines = [ln[::-1] for ln in lines[::-1]]
+    return "\n".join(lines)
 
 
 def find_goal_abs_y(lines):
@@ -232,15 +197,29 @@ def find_goal_abs_y(lines):
     return len(lines) - 1
 
 
+# ✅ (수정 핵심) 노말도 대각선 벽까지 벽으로 취급
+WALL_SET = set(["│", "|", "╱", "╲", "/", "\\", "║", "¦"])
+
+
 def _find_walls_in_row(row_chars):
+    """한 줄(row)에서 좌/우 벽(대각선 포함)의 바깥 경계를 찾는다."""
     s = "".join(row_chars)
-    left = s.find("│")
-    if left == -1:
-        left = s.find("|")
-    right = s.rfind("│")
-    if right == -1:
-        right = s.rfind("|")
-    if left != -1 and right != -1 and right > left:
+
+    idxs = []
+    for ch in WALL_SET:
+        i = s.find(ch)
+        if i != -1:
+            idxs.append(i)
+        j = s.rfind(ch)
+        if j != -1:
+            idxs.append(j)
+
+    if not idxs:
+        return None
+
+    left = min(idxs)
+    right = max(idxs)
+    if right > left:
         return left, right
     return None
 
@@ -253,9 +232,10 @@ def make_car_cells(car_sprite_lines, car_x, car_y):
                 cells.add((car_x + dx, car_y + dy))
     return cells
 
+
 # -------------------------------
 # SCORE 박스
-# -------------------------------
+# -----------------
 SCORE_BOX_INNER = 24
 
 
@@ -268,11 +248,11 @@ def build_score_box(points, best, sec, speed_status):
     bot = "└" + ("─" * SCORE_BOX_INNER) + "┘"
     return [top, l1, l2, l3, l4, bot]
 
+
 # -------------------------------
-# 카운트다운
+# 카운트다운(맵 위)
 # -------------------------------
 def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y):
-    steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
     BIG = {
         "3": [" ██████╗ ", " ╚════██╗", "  █████╔╝", "  ╚═══██╗", " ██████╔╝", " ╚═════╝ "],
         "2": [" ██████╗ ", " ╚════██╗", "  █████╔╝", " ██╔═══╝ ", " ███████╗", " ╚══════╝"],
@@ -286,24 +266,8 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
             "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ",
         ],
     }
-
-    # 카운트다운 중에도 사이드바 정보 표시
-    sidebar = build_score_box(0, 0, 0, "READY")
-    sidebar += [
-        "",
-        "Items:",
-        "  ★ = +5",
-        "  ● = +3",
-        "  ▲ = -2",
-        "",
-        "Normal Mode:",
-        "  벽은 즉사X",
-        "  장애물=즉시 종료",
-        "",
-        "Controls:",
-        "  A/D 또는 ←/→",
-        "  ESC 종료",
-    ]
+    steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
+    sidebar = build_score_box(0, 0, 0, "READY") + ["", "Normal Mode:", "Controls:", "  A/D 또는 ←/→", "  ESC 종료"]
 
     for key, sec in steps:
         clear_screen()
@@ -311,14 +275,10 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
         grid = to_grid(view)
         draw_sprite_on_grid(grid, car_x, car_y, car_sprite_lines)
 
-        H = len(grid)
-        W = len(grid[0]) if H > 0 else 0
+        H, W = len(grid), len(grid[0]) if grid else 0
         art = BIG[key]
-        art_h = len(art)
-        art_w = max(len(s) for s in art)
-
-        ty = max(0, (H // 2) - (art_h // 2))
-        tx = max(0, (W // 2) - (art_w // 2))
+        ty = max(0, (H // 2) - (len(art) // 2))
+        tx = max(0, (W // 2) - (max(len(s) for s in art) // 2))
 
         for dy, line in enumerate(art):
             gy = ty + dy
@@ -337,16 +297,15 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
 # -------------------------------
 # 하이스코어
 # -------------------------------
-HIGHSCORE_FILE = "highscore_normal.txt"
+HIGHSCORE_FILE = "highscore.txt"
 
 
 def load_highscore():
     try:
         if os.path.exists(HIGHSCORE_FILE):
             with open(HIGHSCORE_FILE, "r", encoding="utf-8") as f:
-                v = f.read().strip()
-                return int(v) if v else 0
-    except Exception:
+                return int(f.read().strip() or 0)
+    except:
         pass
     return 0
 
@@ -355,7 +314,7 @@ def save_highscore(score):
     try:
         with open(HIGHSCORE_FILE, "w", encoding="utf-8") as f:
             f.write(str(int(score)))
-    except Exception:
+    except:
         pass
 
 
@@ -396,172 +355,55 @@ def choose_item_spawn(current_view, view_height):
     for _ in range(30):
         y, road_left, road_right = random.choice(candidates)
         x = random.randint(road_left, road_right)
-        if 0 <= y < H and 0 <= x < W and grid[y][x] == " ":
+        if 0 <= y < H:
             return y, x
+
     return None
 
 
 # -------------------------------
-# 장애물 충돌
+# 장애물 (노말용)
 # -------------------------------
+OBSTACLE_CH = "X"
+
+
+def build_obstacles(lines, start_index, goal_abs_y):
+    obstacles = []
+    # 간단히 길 중간중간 X 생성(원래 로직 유지)
+    y0 = max(0, start_index + 10)
+    y1 = min(len(lines) - 1, goal_abs_y - 10)
+    if y1 <= y0:
+        return obstacles
+
+    for _ in range(80):
+        y = random.randint(y0, y1)
+        obstacles.append({"abs_y": y, "x": random.randint(5, 60)})
+    return obstacles
+
+
 def car_hits_obstacle(obstacle_spots, scroll_i, car_x, car_y, car_w, car_h, view_height):
-    if not obstacle_spots:
-        return False
-
-    car_abs_y1 = scroll_i + car_y
-    car_abs_y2 = car_abs_y1 + car_h - 1
-    car_x1 = car_x
-    car_x2 = car_x + car_w - 1
-
-    view_abs_y1 = scroll_i
-    view_abs_y2 = scroll_i + view_height - 1
+    car_abs_y_top = scroll_i + car_y
+    car_abs_y_bottom = car_abs_y_top + car_h - 1
 
     for ob in obstacle_spots:
-        oy1 = ob["y"]
-        oy2 = ob["y"] + ob["h"] - 1
-        if oy2 < view_abs_y1 or oy1 > view_abs_y2:
+        ay = ob["abs_y"]
+        if ay < car_abs_y_top or ay > car_abs_y_bottom:
             continue
-
-        ox1 = ob["x"]
-        ox2 = ob["x"] + ob["w"] - 1
-
-        if (car_abs_y1 <= oy2 and car_abs_y2 >= oy1 and
-                car_x1 <= ox2 and car_x2 >= ox1):
+        sy = ay - scroll_i
+        ox = ob["x"]
+        if (car_x <= ox <= car_x + car_w - 1) and (car_y <= sy <= car_y + car_h - 1):
             return True
     return False
 
 
 # -------------------------------
-# ✅ TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시
-# -------------------------------
-MINI_INNER_W = 40
-MINI_X_SHRINK = 2
-MINI_Y_SHRINK = 2
-
-_MINI_IMPORTANT = set("│|╲╱═─━┌┐└┘┏┓┗┛┠┨┣┫╔╗╚╝╠╣╦╩╬")
-_MINI_SPACEY = set([" ", "\t", "\r", "\n"])
-
-
-def _mini_pick_char(block_chars):
-    for ch in block_chars:
-        if ch in _MINI_IMPORTANT:
-            return ch
-    for ch in block_chars:
-        if ch not in _MINI_SPACEY:
-            return ch
-    return " "
-
-
-def _compress_segment(seg: str, out_w: int, shrink: int) -> str:
-    if shrink <= 1:
-        return seg[:out_w].ljust(out_w)
-
-    need_src = out_w * shrink
-    seg = seg[:need_src].ljust(need_src)
-
-    out = []
-    for i in range(out_w):
-        block = seg[i * shrink:(i + 1) * shrink]
-        out.append(_mini_pick_char(block))
-    return "".join(out)
-
-
-def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
-                              scroll_i, car_y, car_h, car_x,
-                              mini_view_h: int,
-                              items=None):
-    if items is None:
-        items = []
-
-    H = len(track_lines)
-    if H <= 0:
-        return ["TrackMap: (empty)"]
-
-    car_abs_y = max(0, min(H - 1, scroll_i + car_y + (car_h // 2)))
-
-    s = max(0, min(H - 1, start_index))
-    g = max(0, min(H - 1, goal_abs_y))
-    y0, y1 = (s, g) if s <= g else (g, s)
-
-    src_span = mini_view_h * max(1, MINI_Y_SHRINK)
-    up = src_span // 3
-    top = max(y0, car_abs_y - up)
-    bot = min(y1, top + src_span - 1)
-    top = max(y0, bot - (src_span - 1))
-
-    need_src_w = MINI_INNER_W * max(1, MINI_X_SHRINK)
-
-    cur_line = track_lines[car_abs_y].rstrip("\n")
-    line_len = len(cur_line)
-    if line_len <= 0:
-        clip_start = 0
-    else:
-        clip_start = car_x - (need_src_w // 2)
-        clip_start = max(0, min(clip_start, max(0, line_len - need_src_w)))
-
-    out = []
-    out.append("TrackMap:")
-    out.append("┌" + ("─" * MINI_INNER_W) + "┐")
-
-    ys = []
-    yy = top
-    for _ in range(mini_view_h):
-        yy = min(bot, yy)
-        ys.append(yy)
-
-        ln = track_lines[yy].rstrip("\n")
-        raw_seg = ln[clip_start: clip_start + need_src_w].ljust(need_src_w)
-        seg = _compress_segment(raw_seg, MINI_INNER_W, MINI_X_SHRINK)
-        out.append("│" + seg + "│")
-
-        yy += max(1, MINI_Y_SHRINK)
-
-    out.append("└" + ("─" * MINI_INNER_W) + "┘")
-
-    def overlay(row_i, mx, ch):
-        line_idx = 2 + row_i
-        line = out[line_idx]
-        content = list(line[1:-1])
-        if 0 <= mx < MINI_INNER_W:
-            content[mx] = ch
-            out[line_idx] = "│" + "".join(content) + "│"
-
-    # 아이템 먼저 표시
-    if ys:
-        for it in items:
-            ay = it.get("abs_y")
-            ax = it.get("x")
-            ch = it.get("ch")
-            if ay is None or ax is None or not ch:
-                continue
-            if ay < top or ay > bot:
-                continue
-            row_i = min(range(len(ys)), key=lambda i: abs(ys[i] - ay))
-            mx = (ax - clip_start) // max(1, MINI_X_SHRINK)
-            if 0 <= mx < MINI_INNER_W:
-                overlay(row_i, mx, ch)
-
-    # 차는 최우선
-    if ys:
-        best_i = min(range(len(ys)), key=lambda i: abs(ys[i] - car_abs_y))
-    else:
-        best_i = 0
-    mx_car = (car_x - clip_start) // max(1, MINI_X_SHRINK)
-    mx_car = max(0, min(MINI_INNER_W - 1, mx_car))
-    overlay(best_i, mx_car, "▶")
-
-    denom = max(1, abs(g - s))
-    prog = (car_abs_y - s) / denom if s <= g else (s - car_abs_y) / denom
-    prog = max(0.0, min(1.0, prog))
-    out.append(f"Progress: {int(prog * 100)}%")
-
-    return out
-
-
-# -------------------------------
 # 결과 화면
 # -------------------------------
-def show_result_centered(kind: str, score: int, best: int, sec: int, speed_status: str, reason: str = ""):
+def show_normal_result(kind, points, highscore, sec, speed_status, reason=""):
+    if points > highscore:
+        highscore = points
+        save_highscore(highscore)
+
     arts = {
         "GAME OVER": r"""
  ██████╗  █████╗ ███╗   ███╗███████╗
@@ -580,8 +422,7 @@ def show_result_centered(kind: str, score: int, best: int, sec: int, speed_statu
  ╚═════╝  ╚════╝ ╚═╝  ╚═╝╚══════╝
 """.strip("\n"),
     }
-    title_art = arts.get(kind, kind)
-
+    title = arts.get(kind, kind)
     inner = 34
 
     def row(content: str) -> str:
@@ -598,8 +439,8 @@ def show_result_centered(kind: str, score: int, best: int, sec: int, speed_statu
         top,
         row(header),
         mid,
-        row(f"   SCORE : {score}"),
-        row(f"   BEST  : {best}"),
+        row(f"   SCORE : {points}"),
+        row(f"   BEST  : {highscore}"),
         row(f"   TIME  : {sec}"),
         row(f"   SPEED : {speed_status}"),
         mid,
@@ -607,15 +448,16 @@ def show_result_centered(kind: str, score: int, best: int, sec: int, speed_statu
         bot,
     ]
     box = "\n".join(box_lines)
+    hint = "R = 다시하기 | ESC = 종료"
 
-    hint = "R = 다시하기 | M = 메뉴 | ESC = 종료"
     clear_screen()
-    print_centered_block(title_art + "\n\n" + box + "\n\n" + hint)
+    print_centered_block(title + "\n\n" + box + "\n\n" + hint)
+    return highscore
 
 
-# -------------------------------
-# NORMAL 실행
-# -------------------------------
+# =================================================
+# 메인 게임 (Normal Mode)
+# =================================================
 def screen_two_normal():
     global TRACK_WIDTH
     hide_cursor()
@@ -626,33 +468,22 @@ def screen_two_normal():
         clear_screen()
         print("오류: track.txt 파일이 없습니다.")
         time.sleep(1.2)
-        return None
+        return
 
     with open(filename, "r", encoding="utf-8") as f:
-        base_lines = f.readlines()
+        lines = f.readlines()
 
-    start_index = find_start_index(base_lines)
-    goal_abs_y = find_goal_abs_y(base_lines)
-
-    # ✅ 장애물(있으면)
-    obstacle_spots = []
-    lines = base_lines
-    try:
-        try:
-            lines, obstacle_spots = player.add_obstacles_to_track(lines, interval=8, chance=0.85, safe_start=6)
-        except TypeError:
-            lines, obstacle_spots = player.add_obstacles_to_track(lines, interval=8, chance=0.85)
-    except AttributeError:
-        obstacle_spots = []
-        lines = base_lines
-
-    total_lines = len(lines)
-    view_height = 28
+    goal_abs_y = find_goal_abs_y(lines)
 
     car_str = rotate_sprite_180(player.car_frame())
     car_sprite_lines = car_str.split("\n")
     car_h = len(car_sprite_lines)
     car_w = max((len(l) for l in car_sprite_lines), default=0)
+
+    view_height = 28
+
+    # 장애물
+    obstacle_spots = build_obstacles(lines, 0, goal_abs_y)
 
     while True:
         TRACK_WIDTH = None
@@ -660,6 +491,7 @@ def screen_two_normal():
 
         scroll_i = 0
         car_y = 0
+        last_bounds = None  # 최근 안전 경계(대각선 구간 이탈 방지)
 
         points = 0
         # start_time 초기화 제거 (아래에서 카운트다운 후 설정)
@@ -684,12 +516,13 @@ def screen_two_normal():
             mn0 = 0
             mx0 = max(0, (len(grid0[0]) if grid0 else 0) - car_w)
 
+        last_bounds = (mn0, mx0)
         car_x = (mn0 + mx0) // 2
 
         countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
         clear_screen()
 
-        # ✅ [수정] 카운트다운이 끝난 직후에 시간을 초기화하여 점수 카운트 시작
+        # ✅ 카운트다운 끝난 직후 시간 초기화 (점수 0부터 시작)
         start_time = time.time()
 
         ended_kind = None
@@ -698,7 +531,7 @@ def screen_two_normal():
         sec = 0
 
         try:
-            while scroll_i < total_lines:
+            while scroll_i < len(lines):
                 now = time.time()
                 current_view = lines[scroll_i: scroll_i + view_height]
                 if not current_view:
@@ -733,17 +566,30 @@ def screen_two_normal():
                     show_cursor()
                     return points
 
-                # 도로 경계(벽은 즉사X, 클램프)
-                rr = min(max(0, car_y + (car_h // 2)), H - 1)
-                walls = _find_walls_in_row(grid[rr])
-                if walls:
-                    mn = walls[0] + 1
-                    mx = (walls[1] - 1) - car_w + 1
+                # ✅ (수정 핵심) 도로 경계: 대각선 벽 포함 + 차 높이만큼 안전 경계 + last_bounds 유지
+                lefts, rights = [], []
+                for yy in range(car_y, car_y + car_h):
+                    if 0 <= yy < H:
+                        wlr = _find_walls_in_row(grid[yy])
+                        if wlr:
+                            l, r = wlr
+                            lefts.append(l)
+                            rights.append(r)
+
+                if lefts and rights:
+                    safe_left = max(lefts) + 1
+                    safe_right = min(rights) - 1
+                    mn = safe_left
+                    mx = safe_right - car_w + 1
                     if mx < mn:
                         mx = mn
+                    last_bounds = (mn, mx)
                 else:
-                    mn = 0
-                    mx = max(0, W - car_w)
+                    if last_bounds is not None:
+                        mn, mx = last_bounds
+                    else:
+                        mn = 0
+                        mx = max(0, W - car_w)
 
                 dx = 0
                 if left and not right:
@@ -780,61 +626,42 @@ def screen_two_normal():
                         items.append({"x": x, "abs_y": abs_y, "ch": it["ch"], "score": it["score"]})
                         last_item_spawn = now
 
-                # 아이템 판정/렌더
+                # 아이템 그리기 + 먹기
                 car_cells = make_car_cells(car_sprite_lines, car_x, car_y)
                 alive_items = []
                 for it in items:
-                    screen_y = it["abs_y"] - scroll_i
-                    if 0 <= screen_y < H:
-                        if 0 <= it["x"] < W and grid[screen_y][it["x"]] == " ":
-                            grid[screen_y][it["x"]] = it["ch"]
-                        if (it["x"], screen_y) in car_cells:
-                            points += it["score"]
-                            if points < 0:
-                                points = 0
+                    sy = it["abs_y"] - scroll_i
+                    if 0 <= sy < H:
+                        if 0 <= it["x"] < W:
+                            grid[sy][it["x"]] = it["ch"]
+                        if (it["x"], sy) in car_cells:
+                            points = max(0, points + it["score"])
                             continue
-                        alive_items.append(it)
-                    else:
-                        alive_items.append(it)
+                    alive_items.append(it)
                 items = alive_items
 
-                if points > highscore:
-                    highscore = points
-                    save_highscore(highscore)
+                # 장애물 그리기
+                for ob in obstacle_spots:
+                    sy = ob["abs_y"] - scroll_i
+                    if 0 <= sy < H and 0 <= ob["x"] < W:
+                        grid[sy][ob["x"]] = OBSTACLE_CH
 
+                # 차 그리기
                 draw_sprite_on_grid(grid, car_x, car_y, car_sprite_lines)
 
-                info_lines = [
+                # 사이드바
+                sidebar = build_score_box(points, highscore, sec, speed_status)
+                sidebar += [
                     "",
                     "Items:",
                     "  ★ = +5",
                     "  ● = +3",
                     "  ▲ = -2",
                     "",
-                    "Normal Mode:",
-                    "  벽은 즉사X",
-                    "  장애물=즉시 종료",
-                    "",
                     "Controls:",
                     "  A/D 또는 ←/→",
                     "  ESC 종료",
                 ]
-                base_sidebar = build_score_box(points, highscore, sec, speed_status) + [""]
-
-                fixed = len(base_sidebar) + 4 + len(info_lines)
-                mini_view_h = max(3, H - fixed)
-
-                minimap = build_track_ascii_minimap(
-                    lines, start_index, goal_abs_y,
-                    scroll_i, car_y, car_h, car_x,
-                    mini_view_h=mini_view_h,
-                    items=items
-                )
-
-                sidebar = []
-                sidebar += base_sidebar
-                sidebar += minimap
-                sidebar += info_lines
 
                 move_cursor_home()
                 sys.stdout.write(render_with_sidebar(grid, sidebar))
@@ -843,32 +670,26 @@ def screen_two_normal():
                 time.sleep(delay)
                 scroll_i += 1
 
+            # 결과 처리
+            if ended_kind is None:
+                ended_kind, ended_reason = "GAME OVER", "END"
+
+            show_cursor()
+            highscore = show_normal_result(ended_kind, points, highscore, sec, speed_status, reason=ended_reason)
+            hide_cursor()
+
+            choice = wait_result_choice()
+            if choice == "restart":
+                hide_cursor()
+                continue
+            elif choice == "exit":
+                return points
+
         except KeyboardInterrupt:
             show_cursor()
-            return
-
-        if points > highscore:
-            highscore = points
-            save_highscore(highscore)
-
-        show_cursor()
-        if ended_kind is None:
-            ended_kind = "GAME OVER"
-            ended_reason = "END"
-
-        final_speed = "FINISH" if ended_kind == "GOAL" else speed_status
-        show_result_centered("GOAL" if ended_kind == "GOAL" else "GAME OVER",
-                             points, highscore, sec, final_speed,
-                             reason=ended_reason)
-
-        choice = wait_result_choice()
-        if choice == "restart":
-            hide_cursor()
-            continue
-        elif choice == "menu":
             return points
-        elif choice == "exit":
-            sys.exit(0)  # 프로그램 종료
+
+    show_cursor()
 
 
 def screen_two():
