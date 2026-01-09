@@ -125,9 +125,12 @@ def wait_result_choice():
             if keyboard.is_pressed("r"):
                 time.sleep(0.2)
                 return "restart"
-            if keyboard.is_pressed("esc"):
+            if keyboard.is_pressed("m"):
                 time.sleep(0.2)
                 return "menu"
+            if keyboard.is_pressed("esc"):
+                time.sleep(0.2)
+                return "exit"
             time.sleep(0.03)
         else:
             if msvcrt.kbhit():
@@ -363,7 +366,7 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
         clip_start = max(0, min(clip_start, max(0, line_len - need_src_w)))
 
     out = []
-    out.append("TrackMap (Zoom+Shrink):")
+    out.append("TrackMap:")
     out.append("┌" + ("─" * MINI_INNER_W) + "┐")
 
     ys = []
@@ -463,7 +466,7 @@ def show_hard_result(kind, points, highscore, sec, speed_status, reason=""):
     box_lines = [top, row(header), mid, row(f"   SCORE : {points}"), row(f"   BEST  : {highscore}"),
                  row(f"   TIME  : {sec}"), row(f"   SPEED : {speed_status}"), mid, row(f"   {reason_line}"), bot]
     box = "\n".join(box_lines)
-    hint = "R = 다시하기   |   ESC = 메뉴로"
+    hint = "R = 다시하기 | M = 메뉴 | ESC = 종료"
 
     clear_screen()
     print_centered_block(title + "\n\n" + box + "\n\n" + hint)
@@ -477,11 +480,11 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
         "1": ["  ██╗", " ███║", " ╚██║", "  ██║", "  ██║", "  ╚═╝"],
         "START": ["███████╗████████╗ █████╗ ██████╗ ████████╗", "██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝",
                   "███████╗   ██║   ███████║██████╔╝   ██║   ", "╚════██║   ██║   ██╔══██║██╔══██╗   ██║   ",
-                  "███████╗   ██║   ██║  ██║██║  ██║   ██║   ", "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   "],
+                  "███████║   ██║   ██║  ██║██║  ██║   ██║   ", "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   "],
     }
     steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
     sidebar = build_score_box(0, 0, 0, "READY")
-    sidebar += ["", "Hard Mode:", "  [!] 미사일", "      닿으면 즉사", "", "Controls:", "  <-/->, ESC"]
+    sidebar += ["", "Hard Mode:", "  [!] 벽/미사일", "      닿으면 즉사", "", "Controls:", "  A/D, ESC"]
 
     for key, sec in steps:
         clear_screen()
@@ -683,8 +686,7 @@ def screen_two_hard():
                 if proposed_x < mn: proposed_x = mn
                 if proposed_x > mx: proposed_x = mx
 
-                # ✅ 벽에 닿아도 게임오버되지 않음 (단순히 이동만 제한됨)
-                car_x = proposed_x
+
 
                 # 미사일 생성
                 if now - last_ms_spawn >= 1.2 and W > 0 and H > 0:
@@ -768,10 +770,10 @@ def screen_two_hard():
                     "  ▲ = -2",
                     "",
                     "Hard Mode:",
-                    "  [!] 미사일 닿으면 즉사",
+                    "  [!] 미사일=즉시 종료",
                     "",
                     "Controls:",
-                    "  ←/→",
+                    "  A/D 또는 ←/→",
                     "  ESC 종료",
                 ]
                 base_sidebar = build_score_box(points, highscore, sec, speed_status) + [""]
@@ -808,13 +810,20 @@ def screen_two_hard():
             hide_cursor()
 
             choice = wait_result_choice()
-            if choice == "restart": continue
-            show_cursor()
-            return
+            if choice == "restart":
+                hide_cursor()
+                continue
+
+            # [수정 포인트] 점수 대신 사용자가 선택한 '명령(menu, exit 등)'을 리턴해야 함
+            if choice == "menu":
+                return "menu"
+            elif choice == "exit":
+                return "esc"  # 메인에서 "esc"로 체크하므로 글자를 맞춤
+
 
         except KeyboardInterrupt:
-            show_cursor()
-            return
+             show_cursor()
+             return
 
     # 안전하게 커서 복구
     show_cursor()

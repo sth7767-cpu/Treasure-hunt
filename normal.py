@@ -7,7 +7,7 @@ import unicodedata
 import player
 
 # -------------------------------
-# 키보드 처리 (key)
+# 키보드 처리
 # -------------------------------
 try:
     import keyboard
@@ -103,6 +103,31 @@ def print_centered_block(text: str):
 
 
 # -------------------------------
+# ✅ 스프라이트 180도 회전(노말도 하드처럼 보이게)
+# -------------------------------
+def rotate_sprite_180(sprite: str) -> str:
+    """
+    스프라이트를 180도 회전(상하 + 좌우 반전)
+    줄 길이가 달라도 정렬 깨지지 않도록 패딩 후 회전
+    """
+    lines = sprite.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+
+    if not lines:
+        return sprite
+
+    w = max(len(line) for line in lines)
+    padded = [line.ljust(w) for line in lines]
+
+    rotated = []
+    for line in reversed(padded):
+        rotated.append(line[::-1])
+
+    return "\n".join(rotated)
+
+
+# -------------------------------
 # 입력
 # -------------------------------
 def get_key_state():
@@ -132,7 +157,10 @@ def wait_result_choice():
             if keyboard.is_pressed("r"):
                 time.sleep(0.2)
                 return "restart"
-            if keyboard.is_pressed("esc"):
+            elif keyboard.is_pressed("esc"):
+                time.sleep(0.2)
+                return "exit"
+            elif keyboard.is_pressed("m"):
                 time.sleep(0.2)
                 return "menu"
             time.sleep(0.03)
@@ -150,7 +178,8 @@ def wait_result_choice():
 # 그리드/렌더
 # -------------------------------
 TRACK_WIDTH = None
-SIDEBAR_WIDTH = 70 # ✅ TrackMap 넓힘
+SIDEBAR_WIDTH = 70  # ✅ TrackMap 넓힘
+
 
 def to_grid(view_lines):
     global TRACK_WIDTH
@@ -282,6 +311,7 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
 # -------------------------------
 HIGHSCORE_FILE = "highscore_normal.txt"
 
+
 def load_highscore():
     try:
         if os.path.exists(HIGHSCORE_FILE):
@@ -291,6 +321,7 @@ def load_highscore():
     except Exception:
         pass
     return 0
+
 
 def save_highscore(score):
     try:
@@ -308,6 +339,7 @@ ITEMS = [
     {"name": "CIRCLE", "ch": "●", "score": 3},
     {"name": "TRI", "ch": "▲", "score": -2},
 ]
+
 
 def choose_item_spawn(current_view, view_height):
     grid = to_grid(current_view)
@@ -376,6 +408,7 @@ def car_hits_obstacle(obstacle_spots, scroll_i, car_x, car_y, car_w, car_h, view
 # -------------------------------
 SCORE_BOX_INNER = 24
 
+
 def build_score_box(points, best, sec, speed_status):
     top = "┌" + ("─" * SCORE_BOX_INNER) + "┐"
     l1 = "│" + pad_to_width(f" Points : {points}", SCORE_BOX_INNER) + "│"
@@ -389,12 +422,13 @@ def build_score_box(points, best, sec, speed_status):
 # -------------------------------
 # ✅ TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시
 # -------------------------------
-MINI_INNER_W = 40   # ✅ 넓힘
+MINI_INNER_W = 40
 MINI_X_SHRINK = 2
 MINI_Y_SHRINK = 2
 
 _MINI_IMPORTANT = set("│|╲╱═─━┌┐└┘┏┓┗┛┠┨┣┫╔╗╚╝╠╣╦╩╬")
 _MINI_SPACEY = set([" ", "\t", "\r", "\n"])
+
 
 def _mini_pick_char(block_chars):
     for ch in block_chars:
@@ -405,6 +439,7 @@ def _mini_pick_char(block_chars):
             return ch
     return " "
 
+
 def _compress_segment(seg: str, out_w: int, shrink: int) -> str:
     if shrink <= 1:
         return seg[:out_w].ljust(out_w)
@@ -414,9 +449,10 @@ def _compress_segment(seg: str, out_w: int, shrink: int) -> str:
 
     out = []
     for i in range(out_w):
-        block = seg[i*shrink:(i+1)*shrink]
+        block = seg[i * shrink:(i + 1) * shrink]
         out.append(_mini_pick_char(block))
     return "".join(out)
+
 
 def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
                              scroll_i, car_y, car_h, car_x,
@@ -494,10 +530,7 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
                 overlay(row_i, mx, ch)
 
     # 차는 최우선
-    if ys:
-        best_i = min(range(len(ys)), key=lambda i: abs(ys[i] - car_abs_y))
-    else:
-        best_i = 0
+    best_i = min(range(len(ys)), key=lambda i: abs(ys[i] - car_abs_y)) if ys else 0
     mx_car = (car_x - clip_start) // max(1, MINI_X_SHRINK)
     mx_car = max(0, min(MINI_INNER_W - 1, mx_car))
     overlay(best_i, mx_car, "▶")
@@ -535,6 +568,7 @@ def show_result_centered(kind: str, score: int, best: int, sec: int, speed_statu
     title_art = arts.get(kind, kind)
 
     inner = 34
+
     def row(content: str) -> str:
         return "┃" + pad_to_width(content, inner) + "┃"
 
@@ -559,7 +593,7 @@ def show_result_centered(kind: str, score: int, best: int, sec: int, speed_statu
     ]
     box = "\n".join(box_lines)
 
-    hint = "R = 다시하기   |   ESC = 메뉴로"
+    hint = "R = 다시하기 | M = 메뉴 | ESC = 종료"
     clear_screen()
     print_centered_block(title_art + "\n\n" + box + "\n\n" + hint)
 
@@ -600,7 +634,8 @@ def screen_two_normal():
     total_lines = len(lines)
     view_height = 20
 
-    car_str = player.car_frame()
+    # ✅ 여기 핵심: 노말도 하드처럼 로켓 모양 동일하게(180도 회전)
+    car_str = rotate_sprite_180(player.car_frame())
     car_sprite_lines = car_str.split("\n")
     car_h = len(car_sprite_lines)
     car_w = max((len(l) for l in car_sprite_lines), default=0)
@@ -752,7 +787,6 @@ def screen_two_normal():
 
                 draw_sprite_on_grid(grid, car_x, car_y, car_sprite_lines)
 
-                # ✅ 미니맵 안 잘리게 mini_view_h 자동 계산
                 info_lines = [
                     "",
                     "Items:",
@@ -814,8 +848,15 @@ def screen_two_normal():
         if choice == "restart":
             hide_cursor()
             continue
+
+        if choice == "menu":
+            return "menu"
+        elif choice == "exit":
+            return "esc"
+
         return points
 
 
+# 메인에서 normal.screen_two() 로 부르는 경우 대비
 def screen_two():
     return screen_two_normal()

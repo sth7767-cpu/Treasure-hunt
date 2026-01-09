@@ -1,4 +1,4 @@
-import shutil  # 상단에 import 확인 (main)
+import shutil  # 상단에 import 확인
 import keyboard
 import os
 import time
@@ -24,17 +24,6 @@ def get_big_start_text():
 ███████║   ██║   ██║  ██║██║  ██║   ██║   
 ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
     """
-
-def get_big_end_text():
-    return r"""
- ██████╗  █████╗ ███╗   ███╗███████╗    ██████╗ ██╗   ██╗███████╗██████╗ 
-██╔════╝ ██╔══██╗████╗ ████║██╔════╝    ██╔═══██╗██║   ██║██╔════╝██╔══██╗
-██║  ███╗███████║██╔████╔██║█████╗      ██║   ██║██║   ██║█████╗  ██████╔╝
-██║   ██║██╔══██║██║╚██╔╝██║██╔══╝      ██║   ██║╚██╗ ██╔╝██╔══╝  ██╔══██╗
-╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗    ╚██████╔╝ ╚████╔╝ ███████╗██║  ██║
- ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝     ╚═════╝   ╚═══╝  ╚══════╝╚═╝  ╚═╝
-    """
-
 
 # =================================================
 # 터미널 표시 폭(한글=2칸) 유틸
@@ -232,16 +221,24 @@ def screen_one():
             time.sleep(0.01)
 
         clear_screen()
-        columns, _ = shutil.get_terminal_size()
-        print("\n" + "잠시 후 게임이 시작됩니다...".center(columns))
+        columns, rows = shutil.get_terminal_size((80, 24))
+
+        # 세로 중앙 계산
+        message = "잠시 후 게임이 시작됩니다..."
+        top_pad = max(0, rows // 2)
+
+        print("\n" * top_pad + message.center(columns))
         time.sleep(1)
 
         # 게임 실행
         final_score = 0
         if selected_index == 0:
-            final_score = normal.screen_two_normal()  # normal.py 실행
+            final_score = normal.screen_two_normal()
         else:
             final_score = hard.screen_two_hard()  # hard.py 실행
+
+        if final_score == "menu":
+            continue
 
         # 게임이 끝나면 엔딩 화면으로 (재시작 여부 확인)
         if not screen_three(final_score):
@@ -254,51 +251,51 @@ def screen_one():
 # ==========================================
 def screen_three(score):
     clear_screen()
-    # 로고 출력
-    print_centered_end(get_big_end_text())
+    columns, rows = shutil.get_terminal_size((80, 24))
 
-
-    columns, _ = shutil.get_terminal_size()
-
-    if columns < 20: columns = 140
-    # 점수가 None이면(강제종료 등) 0점으로 처리
     if score is None: score = 0
 
-    # print("\n" + "게임을 계속하시겠습니까? (Y/N)".center(columns))
-    print("\n\n")  # <--- 여기서 2줄 띄워줍니다
-    print_centered_end("게임을 계속하시겠습니까? (Y/N)")
+    # 1. 출력할 텍스트 구성 (로고 제외)
+    question = "게임을 종료하시겠습니까? (Y/N)"
+
+    # 출력할 총 줄 수 (점수 1줄 + 간격 1줄 + 질문 1줄)
+    total_content_h = 3
+
+    # 2. 세로 여백 계산 (전체 높이의 절반에서 내용 절반을 뺌)
+    top_pad = max(0, (rows - total_content_h) // 2)
+
+    # 3. 출력 시작
+    print("\n" * top_pad)
+
+    # 점수와 질문 출력 (한글 보정 함수 사용)
+    print("\n")  # 점수와 질문 사이 한 줄 띄움
+    print_centered_end(question)
 
     while True:
-        print("\n\n")  # <--- 여기서 2줄 띄워줍니다
-
-        # 입력창(선택 >)도 중앙 정렬을 위해 padding 계산
-        prompt = "선택 >" + "             "
-
-        # (화면 중앙) - (글자 길이 정도) 위치 계산
-        # 여기서 숫자 4를 10, 20 등으로 키우면 더 왼쪽으로 이동합니다.
-        padding_len = max(0, (columns // 2) - 20)
-
-        # 공백 + "선택 > " 형태의 문자열 생성
+        # 입력창(선택 >) 중앙 정렬 위치 계산
+        prompt = "선택 > "
+        # 120칸 기준 혹은 터미널 기준 중앙으로 배치
+        padding_len = max(0, (columns // 2) - 10)
         final_prompt = " " * padding_len + prompt
 
-        choice = input(final_prompt).strip().upper()
+        # input 앞에 살짝 줄바꿈을 주어 가독성 향상
+        choice = input("\n" + final_prompt).strip().upper()
 
-        if choice == 'Y':
-            print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+        if choice == 'N':
+            print("\n")
             print_centered_end("게임을 다시 시작합니다!")
             time.sleep(1)
             return True
 
-        elif choice == 'N':
-            print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+        elif choice == 'Y':
+            print("\n")
             print_centered_end("게임을 종료합니다. 이용해 주셔서 감사합니다.")
             time.sleep(2)
             return False
 
         else:
-            print("\n\n")  # <--- 여기서 2줄 띄워줍니다
+            # 잘못 입력했을 때도 중앙에 표시
             print_centered_end("잘못된 입력입니다. Y 또는 N을 입력해주세요.")
-            print("\n")
 
 
 
