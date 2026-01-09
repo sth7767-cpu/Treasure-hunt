@@ -300,7 +300,7 @@ def build_score_box(points, best, sec, speed_status):
 # -------------------------------
 # ✅ TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시 + 가변 높이
 # -------------------------------
-MINI_INNER_W = 50   # ✅ 넓힘
+MINI_INNER_W = 50  # ✅ 넓힘
 MINI_X_SHRINK = 2
 MINI_Y_SHRINK = 2
 
@@ -484,7 +484,7 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
     }
     steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
     sidebar = build_score_box(0, 0, 0, "READY")
-    sidebar += ["", "Hard Mode:", "  [!] 미사일", "      닿으면 즉사", "", "Controls:", "  A/D, ESC"]
+    sidebar += ["", "Hard Mode:", "  [!] 미사일", "      닿으면 즉사", "", "Controls:", "  A/D, <-/->, ESC"]
 
     for key, sec in steps:
         clear_screen()
@@ -623,13 +623,17 @@ def screen_two_hard():
         last_mv_time = time.time()
 
         scroll_i, car_x, car_y, last_bounds = init_start_state()
-        start_time = time.time()
+
+        # start_time = time.time() # 기존: 카운트다운 전에 시작됨 (삭제)
         points = 0
         last_sec = 0
         speed_status = "보통"
 
         countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
         clear_screen()
+
+        # ✅ [수정] 카운트다운 끝난 직후 시간 초기화
+        start_time = time.time()
 
         ended_kind = None
         ended_reason = ""
@@ -773,7 +777,7 @@ def screen_two_hard():
                     "  [!] 미사일=즉시 종료",
                     "",
                     "Controls:",
-                    "  A/D 또는 ←/→",
+                    "  A/D, ←/→",
                     "  ESC 종료",
                 ]
                 base_sidebar = build_score_box(points, highscore, sec, speed_status) + [""]
@@ -822,8 +826,8 @@ def screen_two_hard():
 
 
         except KeyboardInterrupt:
-             show_cursor()
-             return
+            show_cursor()
+            return
 
     # 안전하게 커서 복구
     show_cursor()

@@ -103,13 +103,9 @@ def print_centered_block(text: str):
 
 
 # -------------------------------
-# ✅ 스프라이트 180도 회전(노말도 하드처럼 보이게)
+# ✅ 스프라이트 180도 회전
 # -------------------------------
 def rotate_sprite_180(sprite: str) -> str:
-    """
-    스프라이트를 180도 회전(상하 + 좌우 반전)
-    줄 길이가 달라도 정렬 깨지지 않도록 패딩 후 회전
-    """
     lines = sprite.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
@@ -178,7 +174,7 @@ def wait_result_choice():
 # 그리드/렌더
 # -------------------------------
 TRACK_WIDTH = None
-SIDEBAR_WIDTH = 70  # ✅ TrackMap 넓힘
+SIDEBAR_WIDTH = 70
 
 
 def to_grid(view_lines):
@@ -257,9 +253,23 @@ def make_car_cells(car_sprite_lines, car_x, car_y):
                 cells.add((car_x + dx, car_y + dy))
     return cells
 
+# -------------------------------
+# SCORE 박스
+# -------------------------------
+SCORE_BOX_INNER = 24
+
+
+def build_score_box(points, best, sec, speed_status):
+    top = "┌" + ("─" * SCORE_BOX_INNER) + "┐"
+    l1 = "│" + pad_to_width(f" Points : {points}", SCORE_BOX_INNER) + "│"
+    l2 = "│" + pad_to_width(f" Best   : {best}", SCORE_BOX_INNER) + "│"
+    l3 = "│" + pad_to_width(f" Time   : {sec}", SCORE_BOX_INNER) + "│"
+    l4 = "│" + pad_to_width(f" Speed  : {speed_status}", SCORE_BOX_INNER) + "│"
+    bot = "└" + ("─" * SCORE_BOX_INNER) + "┘"
+    return [top, l1, l2, l3, l4, bot]
 
 # -------------------------------
-# 카운트다운(간단)
+# 카운트다운
 # -------------------------------
 def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y):
     steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
@@ -276,6 +286,24 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
             "╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ",
         ],
     }
+
+    # 카운트다운 중에도 사이드바 정보 표시
+    sidebar = build_score_box(0, 0, 0, "READY")
+    sidebar += [
+        "",
+        "Items:",
+        "  ★ = +5",
+        "  ● = +3",
+        "  ▲ = -2",
+        "",
+        "Normal Mode:",
+        "  벽은 즉사X",
+        "  장애물=즉시 종료",
+        "",
+        "Controls:",
+        "  A/D 또는 ←/→",
+        "  ESC 종료",
+    ]
 
     for key, sec in steps:
         clear_screen()
@@ -301,13 +329,13 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
                         grid[gy][gx] = ch
 
         move_cursor_home()
-        sys.stdout.write("".join("".join(row) + "\n" for row in grid))
+        sys.stdout.write(render_with_sidebar(grid, sidebar))
         sys.stdout.flush()
         time.sleep(sec)
 
 
 # -------------------------------
-# 하이스코어(NORMAL)
+# 하이스코어
 # -------------------------------
 HIGHSCORE_FILE = "highscore_normal.txt"
 
@@ -404,22 +432,6 @@ def car_hits_obstacle(obstacle_spots, scroll_i, car_x, car_y, car_w, car_h, view
 
 
 # -------------------------------
-# SCORE 박스
-# -------------------------------
-SCORE_BOX_INNER = 24
-
-
-def build_score_box(points, best, sec, speed_status):
-    top = "┌" + ("─" * SCORE_BOX_INNER) + "┐"
-    l1 = "│" + pad_to_width(f" Points : {points}", SCORE_BOX_INNER) + "│"
-    l2 = "│" + pad_to_width(f" Best   : {best}", SCORE_BOX_INNER) + "│"
-    l3 = "│" + pad_to_width(f" Time   : {sec}", SCORE_BOX_INNER) + "│"
-    l4 = "│" + pad_to_width(f" Speed  : {speed_status}", SCORE_BOX_INNER) + "│"
-    bot = "└" + ("─" * SCORE_BOX_INNER) + "┘"
-    return [top, l1, l2, l3, l4, bot]
-
-
-# -------------------------------
 # ✅ TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시
 # -------------------------------
 MINI_INNER_W = 40
@@ -455,9 +467,9 @@ def _compress_segment(seg: str, out_w: int, shrink: int) -> str:
 
 
 def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
-                             scroll_i, car_y, car_h, car_x,
-                             mini_view_h: int,
-                             items=None):
+                              scroll_i, car_y, car_h, car_x,
+                              mini_view_h: int,
+                              items=None):
     if items is None:
         items = []
 
@@ -530,7 +542,10 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
                 overlay(row_i, mx, ch)
 
     # 차는 최우선
-    best_i = min(range(len(ys)), key=lambda i: abs(ys[i] - car_abs_y)) if ys else 0
+    if ys:
+        best_i = min(range(len(ys)), key=lambda i: abs(ys[i] - car_abs_y))
+    else:
+        best_i = 0
     mx_car = (car_x - clip_start) // max(1, MINI_X_SHRINK)
     mx_car = max(0, min(MINI_INNER_W - 1, mx_car))
     overlay(best_i, mx_car, "▶")
@@ -632,9 +647,8 @@ def screen_two_normal():
         lines = base_lines
 
     total_lines = len(lines)
-    view_height = 20
+    view_height = 28
 
-    # ✅ 여기 핵심: 노말도 하드처럼 로켓 모양 동일하게(180도 회전)
     car_str = rotate_sprite_180(player.car_frame())
     car_sprite_lines = car_str.split("\n")
     car_h = len(car_sprite_lines)
@@ -648,7 +662,7 @@ def screen_two_normal():
         car_y = 0
 
         points = 0
-        start_time = time.time()
+        # start_time 초기화 제거 (아래에서 카운트다운 후 설정)
         last_sec = 0
         highscore = load_highscore()
 
@@ -674,6 +688,9 @@ def screen_two_normal():
 
         countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
         clear_screen()
+
+        # ✅ [수정] 카운트다운이 끝난 직후에 시간을 초기화하여 점수 카운트 시작
+        start_time = time.time()
 
         ended_kind = None
         ended_reason = ""
@@ -848,15 +865,11 @@ def screen_two_normal():
         if choice == "restart":
             hide_cursor()
             continue
-
-        if choice == "menu":
-            return "menu"
+        elif choice == "menu":
+            return points
         elif choice == "exit":
-            return "esc"
-
-        return points
+            sys.exit(0)  # 프로그램 종료
 
 
-# 메인에서 normal.screen_two() 로 부르는 경우 대비
 def screen_two():
     return screen_two_normal()
