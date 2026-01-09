@@ -484,7 +484,7 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
     }
     steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
     sidebar = build_score_box(0, 0, 0, "READY")
-    sidebar += ["", "Hard Mode:", "  [!] 벽/미사일", "      닿으면 즉사", "", "Controls:", "  A/D, ESC"]
+    sidebar += ["", "Hard Mode:", "  [!] 미사일", "      닿으면 즉사", "", "Controls:", "  A/D, ESC"]
 
     for key, sec in steps:
         clear_screen()
@@ -686,7 +686,7 @@ def screen_two_hard():
                 if proposed_x < mn: proposed_x = mn
                 if proposed_x > mx: proposed_x = mx
 
-
+                car_x = proposed_x
 
                 # 미사일 생성
                 if now - last_ms_spawn >= 1.2 and W > 0 and H > 0:

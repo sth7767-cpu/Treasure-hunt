@@ -7,7 +7,7 @@ import random
 # =========================
 def car_frame():
     """
-    로켓(차) 스프라이트
+    로켓 스프라이트
 
     중요:
     - hard/normal에서 rotate_sprite_180()로 뒤집어 출력하는 구조라서
