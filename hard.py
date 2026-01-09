@@ -363,7 +363,7 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
         clip_start = max(0, min(clip_start, max(0, line_len - need_src_w)))
 
     out = []
-    out.append("TrackMap (Zoom+Shrink):")
+    out.append("TrackMap:")
     out.append("┌" + ("─" * MINI_INNER_W) + "┐")
 
     ys = []
@@ -481,7 +481,7 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
     }
     steps = [("3", 0.7), ("2", 0.7), ("1", 0.7), ("START", 0.9)]
     sidebar = build_score_box(0, 0, 0, "READY")
-    sidebar += ["", "Hard Mode:", "  [!] 벽/미사일", "      닿으면 즉사", "", "Controls:", "  A/D, ESC"]
+    sidebar += ["", "Hard Mode:", "  [!] 미사일", "      닿으면 즉사", "", "Controls:", "  A/D, ESC"]
 
     for key, sec in steps:
         clear_screen()
@@ -598,7 +598,7 @@ def screen_two_hard():
     view_height = 28
 
     # 미사일 모양 및 설정
-    MISSILE_SHAPE = "=====>"
+    MISSILE_SHAPE = "<===="
     missile_len = len(MISSILE_SHAPE)
 
     highscore = load_highscore()
@@ -779,7 +779,7 @@ def screen_two_hard():
                     "  ▲ = -2",
                     "",
                     "Hard Mode:",
-                    "  [!] 벽/미사일=즉시 종료",
+                    "  [!] 미사일=즉시 종료",
                     "",
                     "Controls:",
                     "  A/D 또는 ←/→",

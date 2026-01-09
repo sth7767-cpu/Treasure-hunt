@@ -171,7 +171,7 @@ def screen_one():
             clear_screen()
             columns, rows = shutil.get_terminal_size()
 
-            title = "================== RACING GAME MODE SELECT =================="
+            title = "================== SPACE DASH GAME MODE SELECT =================="
 
             # ✅ 박스 폭: (1) 터미널 폭 제한 + (2) 타이틀 표시폭 기반 최소 폭
             min_box_w = disp_width(title) + 2  # | | 포함 (표시폭 기준)

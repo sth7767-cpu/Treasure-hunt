@@ -452,7 +452,7 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
         clip_start = max(0, min(clip_start, max(0, line_len - need_src_w)))
 
     out = []
-    out.append("TrackMap (Zoom+Shrink):")
+    out.append("TrackMap:")
     out.append("┌" + ("─" * MINI_INNER_W) + "┐")
 
     ys = []
