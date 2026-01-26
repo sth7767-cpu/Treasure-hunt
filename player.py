@@ -2,9 +2,7 @@
 import random
 
 
-# =========================
 # CAR
-# =========================
 def car_frame():
     """
     로켓 스프라이트
@@ -26,9 +24,7 @@ def car_frame():
 
 
 
-# =========================
 # OBSTACLE SHAPES
-# =========================
 def get_rock():
     rock = [
         "  .-.  ",
@@ -47,9 +43,7 @@ def get_cone():
     return "\n".join(cone)
 
 
-# =========================
 # TRACK UTIL
-# =========================
 def _find_road_bounds(line: str):
     """도로 좌/우 벽 위치 찾기(│ 우선, 없으면 |)"""
     left = line.find('│')
@@ -98,9 +92,8 @@ def _stamp(lines, abs_y, x, art_lines):
         lines[yy] = "".join(base_list) + ("\n" if has_nl else "")
 
 
-# =========================
-# ✅ NEW: 트랙에 랜덤 장애물 심기
-# =========================
+# 트랙에 랜덤 장애물 심기
+
 def add_obstacles_to_track(lines, interval=12, chance=0.7, safe_start=10):
     """
     safe_start: 트랙 시작에서 최소 몇 줄은 절대 장애물 안 나오게 (0-index 기준)
@@ -110,7 +103,7 @@ def add_obstacles_to_track(lines, interval=12, chance=0.7, safe_start=10):
 
     obstacle_arts = [get_rock(), get_cone()]
 
-    # ✅ 초반 안전구간 보장
+    # 초반 안전구간 보장
     start = max(int(safe_start), 0)
     end = max(start, len(lines) - 10)
 
