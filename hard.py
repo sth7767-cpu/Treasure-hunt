@@ -144,7 +144,7 @@ def wait_result_choice():
 # 그리드/렌더
 # -------------------------------
 TRACK_WIDTH = None
-SIDEBAR_WIDTH = 70  # ✅ TrackMap 및 정보를 위해 넓힘
+SIDEBAR_WIDTH = 70  #  TrackMap 및 정보를 위해 넓힘
 
 
 def to_grid(view_lines):
@@ -298,9 +298,9 @@ def build_score_box(points, best, sec, speed_status):
 
 
 # -------------------------------
-# ✅ TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시 + 가변 높이
+#  TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시 + 가변 높이
 # -------------------------------
-MINI_INNER_W = 50  # ✅ 넓힘
+MINI_INNER_W = 50  #  넓힘
 MINI_X_SHRINK = 2
 MINI_Y_SHRINK = 2
 
@@ -632,7 +632,7 @@ def screen_two_hard():
         countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
         clear_screen()
 
-        # ✅ [수정] 카운트다운 끝난 직후 시간 초기화
+        #  [수정] 카운트다운 끝난 직후 시간 초기화
         start_time = time.time()
 
         ended_kind = None
@@ -765,7 +765,7 @@ def screen_two_hard():
                     ended_kind, ended_reason = "GOAL", ""
                     break
 
-                # ✅ [NEW] 미니맵 안 잘리게 mini_view_h 자동 계산 및 정보 표시
+                #  [NEW] 미니맵 안 잘리게 mini_view_h 자동 계산 및 정보 표시
                 info_lines = [
                     "",
                     "Items:",
