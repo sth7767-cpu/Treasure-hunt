@@ -6,9 +6,7 @@ import random
 import unicodedata
 import player
 
-# -------------------------------
 # 키보드 처리
-# -------------------------------
 try:
     import keyboard
 
@@ -19,9 +17,7 @@ except ImportError:
     USE_KEYBOARD = False
 
 
-# =================================================
 # 1. 화면/ANSI/유틸
-# =================================================
 def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -95,9 +91,7 @@ def print_centered_block(text: str):
     sys.stdout.flush()
 
 
-# =================================================
 # 2. 입력 및 렌더링
-# =================================================
 def get_key_state():
     if USE_KEYBOARD:
         left = keyboard.is_pressed("a") or keyboard.is_pressed("left")
@@ -140,11 +134,9 @@ def wait_result_choice():
             time.sleep(0.03)
 
 
-# -------------------------------
 # 그리드/렌더
-# -------------------------------
 TRACK_WIDTH = None
-SIDEBAR_WIDTH = 70  #  TrackMap 및 정보를 위해 넓힘
+SIDEBAR_WIDTH = 70 
 
 
 def to_grid(view_lines):
@@ -180,9 +172,7 @@ def render_with_sidebar(grid, sidebar_lines):
     return "\n".join(out) + "\n"
 
 
-# -------------------------------
 # 스프라이트/도우미
-# -------------------------------
 def rotate_sprite_180(sprite_str):
     lines = sprite_str.split("\n")
     lines = [ln[::-1] for ln in lines[::-1]]
@@ -262,7 +252,7 @@ def make_car_cells(car_sprite_lines, car_x, car_y):
     return cells
 
 
-# ✅ [핵심] 실제 충돌 판정 함수 (좌표 겹침 확인)
+# 실제 충돌 판정 함수 (좌표 겹침 확인)
 def car_hits_wall(grid, car_x, car_y, car_sprite_lines):
     H = len(grid)
     W = len(grid[0]) if H > 0 else 0
@@ -281,9 +271,7 @@ def car_hits_wall(grid, car_x, car_y, car_sprite_lines):
     return False
 
 
-# =================================================
 # 4. UI 및 데이터
-# =================================================
 SCORE_BOX_INNER = 24
 
 
@@ -297,9 +285,7 @@ def build_score_box(points, best, sec, speed_status):
     return [top, l1, l2, l3, l4, bot]
 
 
-# -------------------------------
-#  TrackMap(원본 잘라서 + 조금 축소) + 아이템 표시 + 가변 높이
-# -------------------------------
+#  TrackMap
 MINI_INNER_W = 50  #  넓힘
 MINI_X_SHRINK = 2
 MINI_Y_SHRINK = 2
@@ -407,7 +393,6 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
             if 0 <= mx < MINI_INNER_W:
                 overlay(row_i, mx, ch)
 
-    # 차는 최우선(덮어쓰기)
     if ys:
         best_i = min(range(len(ys)), key=lambda i: abs(ys[i] - car_abs_y))
     else:
@@ -424,9 +409,7 @@ def build_track_ascii_minimap(track_lines, start_index, goal_abs_y,
     return out
 
 
-# -------------------------------
 # 결과 화면
-# -------------------------------
 def show_hard_result(kind, points, highscore, sec, speed_status, reason=""):
     if points > highscore:
         highscore = points
@@ -510,9 +493,7 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
         time.sleep(sec)
 
 
-# =================================================
 # 하이스코어
-# =================================================
 HIGHSCORE_FILE = "highscore_points.txt"
 
 
@@ -534,10 +515,7 @@ def save_highscore(score):
         pass
 
 
-# -------------------------------
 # 아이템
-# -------------------------------
-
 ITEMS = [
     {"name": "STAR", "ch": "★", "score": 5},
     {"name": "CIRCLE", "ch": "●", "score": 3},
@@ -571,9 +549,7 @@ def make_car_cells(car_sprite_lines, car_x, car_y):
     return cells
 
 
-# =================================================
 # 6. 메인 게임 (Hard Mode)
-# =================================================
 def screen_two_hard():
     global TRACK_WIDTH
     hide_cursor()
@@ -632,7 +608,7 @@ def screen_two_hard():
         countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
         clear_screen()
 
-        #  [수정] 카운트다운 끝난 직후 시간 초기화
+        # 카운트다운 끝난 직후 시간 초기화
         start_time = time.time()
 
         ended_kind = None
@@ -752,7 +728,7 @@ def screen_two_hard():
                     if m["x"] > -missile_len: alive_missiles.append(m)
                 missiles = alive_missiles
 
-                # [수정] 미사일 충돌 시 즉시 게임 오버
+                # 미사일 충돌 시 즉시 게임 오버
                 if hit_missile:
                     ended_kind = "GAME OVER"
                     ended_reason = "미사일 피격"
@@ -765,7 +741,7 @@ def screen_two_hard():
                     ended_kind, ended_reason = "GOAL", ""
                     break
 
-                #  [NEW] 미니맵 안 잘리게 mini_view_h 자동 계산 및 정보 표시
+                # 미니맵 안 잘리게 mini_view_h 자동 계산 및 정보 표시
                 info_lines = [
                     "",
                     "Items:",
@@ -782,7 +758,7 @@ def screen_two_hard():
                 ]
                 base_sidebar = build_score_box(points, highscore, sec, speed_status) + [""]
 
-                # minimap(타이틀/테두리/바닥/progress) = +4줄 여유 필요
+                # minimap(타이틀/테두리/바닥/progress) = +4줄 
                 fixed = len(base_sidebar) + 4 + len(info_lines)
                 mini_view_h = max(3, H - fixed)
 
@@ -818,18 +794,17 @@ def screen_two_hard():
                 hide_cursor()
                 continue
 
-            # [수정 포인트] 점수 대신 사용자가 선택한 '명령(menu, exit 등)'을 리턴해야 함
+            # 점수 대신 사용자가 선택한 '명령(menu, exit 등)'을 리턴
             if choice == "menu":
                 return "menu"
             elif choice == "exit":
-                return "esc"  # 메인에서 "esc"로 체크하므로 글자를 맞춤
+                return "esc"  # 메인에서 "esc"
 
 
         except KeyboardInterrupt:
             show_cursor()
             return
 
-    # 안전하게 커서 복구
     show_cursor()
 
 
