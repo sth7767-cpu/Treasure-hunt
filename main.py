@@ -92,9 +92,9 @@ def print_centered_end(text):
         print(" " * padding + ln)
 
 
-# =================================================
-# ✅ 박스 렌더링: 박스는 중앙 고정, 내용은 왼쪽 정렬(한글폭 대응)
-# =================================================
+
+#  박스 렌더링: 박스는 중앙 고정, 내용은 왼쪽 정렬
+
 def build_info_box_left(box_w: int, content_lines: list[str], left_pad: int = 2) -> str:
     inner_w = box_w - 2
 
@@ -106,10 +106,10 @@ def build_info_box_left(box_w: int, content_lines: list[str], left_pad: int = 2)
             return "|" + (" " * inner_w) + "|"
 
         usable = max(0, inner_w - left_pad)
-        trimmed = truncate_to_width(text, usable)  # ✅ 표시폭 기준 자르기
+        trimmed = truncate_to_width(text, usable)  
 
         left = (" " * left_pad) + trimmed
-        left = pad_right_to_width(left, inner_w)   # ✅ 표시폭 기준 패딩
+        left = pad_right_to_width(left, inner_w) 
         return "|" + left + "|"
 
     block_lines = [top]
@@ -133,9 +133,8 @@ def print_block_centered(block: str, columns: int):
 
 
 
-# ==========================================
+
 # 2. 메인 로비 (screen_one)
-# ==========================================
 def screen_one():
     while True:
         clear_screen()
@@ -145,8 +144,6 @@ def screen_one():
 
         columns, _ = shutil.get_terminal_size()
 
-        # 2. 안내 문구 출력 (오른쪽에 공백 추가해서 위치 조절)
-        # "    " 공백을 추가하면 그만큼 전체 길이가 길어져서, 글자는 왼쪽으로 이동합니다.
         message = "잠시 후 모드 선택 화면으로 이동합니다..." + "                "
 
         print("\n" + message.center(columns))
@@ -162,7 +159,7 @@ def screen_one():
 
             title = "================== SPACE DASH GAME MODE SELECT =================="
 
-            # ✅ 박스 폭: (1) 터미널 폭 제한 + (2) 타이틀 표시폭 기반 최소 폭
+            #  박스 폭: (1) 터미널 폭 제한 + (2) 타이틀 표시폭 기반 최소 폭
             min_box_w = disp_width(title) + 2  # | | 포함 (표시폭 기준)
             box_w = min(72, columns - 4)       # 너무 커지지 않게
             box_w = max(box_w, 46)             # 너무 작아지지 않게
@@ -171,7 +168,7 @@ def screen_one():
             inner_w = box_w - 2
 
             lines = []
-            # ✅ title도 혹시 모를 환경 대비: 표시폭 기준으로 안전하게 잘라 넣기
+            #  title도 혹시 모를 환경 대비: 표시폭 기준으로 안전하게 잘라 넣기
             lines.append(truncate_to_width(title, inner_w))
             lines.append("")
 
@@ -183,7 +180,7 @@ def screen_one():
                 lines.append(">>  HARD MODE  <<")
 
             lines.append("")
-            lines.append("-" * inner_w)  # ✅ 내부폭과 정확히 일치 (대충 금지)
+            lines.append("-" * inner_w)  #  내부폭과 정확히 일치 (대충 금지)
 
             lines.append("난이도 선택")
             lines.append("↑ : 위 , ↓ : 아래")
@@ -194,7 +191,7 @@ def screen_one():
 
             block = build_info_box_left(box_w=box_w, content_lines=lines, left_pad=3)
 
-            # ✅ 세로 중앙 배치
+            #  세로 중앙 배치
             block_lines = block.split("\n")
             pad_y = max(0, (rows - len(block_lines)) // 2)
 
@@ -203,7 +200,7 @@ def screen_one():
 
         draw_menu()
 
-        # ✅ 키 입력 있을 때만 갱신(깜빡임 최소)
+        #  키 입력 있을 때만 갱신(깜빡임 최소)
         while True:
             if keyboard.is_pressed('up') and selected_index != 0:
                 selected_index = 0
@@ -246,9 +243,8 @@ def screen_one():
 
 
 
-# ==========================================
+
 # 3. 엔딩 화면 (screen_three)
-# ==========================================
 def screen_three(score):
     clear_screen()
     columns, rows = shutil.get_terminal_size((80, 24))
