@@ -6,9 +6,8 @@ import shutil
 import unicodedata
 import player
 
-# -------------------------------
+
 # 키보드 처리
-# -------------------------------
 try:
     import keyboard
     USE_KEYBOARD = True
@@ -17,9 +16,8 @@ except ImportError:
     USE_KEYBOARD = False
 
 
-# =================================================
+
 # 1. 화면/ANSI/유틸
-# =================================================
 def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -98,9 +96,7 @@ def print_centered_block(text: str):
     sys.stdout.flush()
 
 
-# =================================================
 # 2. 입력 및 렌더링
-# =================================================
 def get_key_state():
     if USE_KEYBOARD:
         left = keyboard.is_pressed("a") or keyboard.is_pressed("left")
@@ -197,7 +193,6 @@ def find_goal_abs_y(lines):
     return len(lines) - 1
 
 
-# ✅ (수정 핵심) 노말도 대각선 벽까지 벽으로 취급
 WALL_SET = set(["│", "|", "╱", "╲", "/", "\\", "║", "¦"])
 
 
@@ -233,9 +228,8 @@ def make_car_cells(car_sprite_lines, car_x, car_y):
     return cells
 
 
-# -------------------------------
+
 # SCORE 박스
-# -----------------
 SCORE_BOX_INNER = 24
 
 
@@ -249,9 +243,8 @@ def build_score_box(points, best, sec, speed_status):
     return [top, l1, l2, l3, l4, bot]
 
 
-# -------------------------------
+
 # 카운트다운(맵 위)
-# -------------------------------
 def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y):
     BIG = {
         "3": [" ██████╗ ", " ╚════██╗", "  █████╔╝", "  ╚═══██╗", " ██████╔╝", " ╚═════╝ "],
@@ -294,9 +287,8 @@ def countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_
         time.sleep(sec)
 
 
-# -------------------------------
+
 # 하이스코어
-# -------------------------------
 HIGHSCORE_FILE = "highscore.txt"
 
 
@@ -318,9 +310,7 @@ def save_highscore(score):
         pass
 
 
-# -------------------------------
 # 아이템
-# -------------------------------
 ITEMS = [
     {"name": "STAR", "ch": "★", "score": 5},
     {"name": "CIRCLE", "ch": "●", "score": 3},
@@ -361,11 +351,8 @@ def choose_item_spawn(current_view, view_height):
     return None
 
 
-# -------------------------------
 # 장애물 (노말용)
-# -------------------------------
 OBSTACLE_CH = "X"
-
 
 def build_obstacles(lines, start_index, goal_abs_y):
     obstacles = []
@@ -396,9 +383,7 @@ def car_hits_obstacle(obstacle_spots, scroll_i, car_x, car_y, car_w, car_h, view
     return False
 
 
-# -------------------------------
 # 결과 화면
-# -------------------------------
 def show_normal_result(kind, points, highscore, sec, speed_status, reason=""):
     if points > highscore:
         highscore = points
@@ -455,9 +440,7 @@ def show_normal_result(kind, points, highscore, sec, speed_status, reason=""):
     return highscore
 
 
-# =================================================
 # 메인 게임 (Normal Mode)
-# =================================================
 def screen_two_normal():
     global TRACK_WIDTH
     hide_cursor()
@@ -491,7 +474,7 @@ def screen_two_normal():
 
         scroll_i = 0
         car_y = 0
-        last_bounds = None  # 최근 안전 경계(대각선 구간 이탈 방지)
+        last_bounds = None 
 
         points = 0
         # start_time 초기화 제거 (아래에서 카운트다운 후 설정)
@@ -522,7 +505,7 @@ def screen_two_normal():
         countdown_on_map(lines, view_height, scroll_i, car_sprite_lines, car_x, car_y)
         clear_screen()
 
-        # ✅ 카운트다운 끝난 직후 시간 초기화 (점수 0부터 시작)
+        #  카운트다운 끝난 직후 시간 초기화 (점수 0부터 시작)
         start_time = time.time()
 
         ended_kind = None
@@ -566,7 +549,7 @@ def screen_two_normal():
                     show_cursor()
                     return points
 
-                # ✅ (수정 핵심) 도로 경계: 대각선 벽 포함 + 차 높이만큼 안전 경계 + last_bounds 유지
+                # 도로 경계: 대각선 벽 포함 + 차 높이만큼 안전 경계 + last_bounds 
                 lefts, rights = [], []
                 for yy in range(car_y, car_y + car_h):
                     if 0 <= yy < H:
